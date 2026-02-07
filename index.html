@@ -565,11 +565,78 @@
             // Initialize personas
             initializePersonas();
             
+            // Load voices
+            loadVoices();
+            if (window.speechSynthesis) {
+                window.speechSynthesis.onvoiceschanged = loadVoices;
+            }
+            
             // Initialize file manager
             initializeFileManager();
             
             console.log('✅ GravityChat ready!');
         });
+        
+        // Load available voices (Cloud + Native)
+        function loadVoices() {
+            const selector = document.getElementById('voice-selector');
+            const savedVoice = AppState.selectedVoice || 'alloy';
+            
+            // Cloud Voices (Puter/OpenAI)
+            const cloudVoices = [
+                { id: 'alloy', name: '☁️ Cloud: Alloy' },
+                { id: 'echo', name: '☁️ Cloud: Echo' },
+                { id: 'fable', name: '☁️ Cloud: Fable' },
+                { id: 'onyx', name: '☁️ Cloud: Onyx' },
+                { id: 'nova', name: '☁️ Cloud: Nova' },
+                { id: 'shimmer', name: '☁️ Cloud: Shimmer' }
+            ];
+            
+            // Native Voices
+            let nativeVoices = [];
+            if (window.speechSynthesis) {
+                nativeVoices = window.speechSynthesis.getVoices()
+                    .filter(v => v.lang.startsWith('en')) // Filter English
+                    .map(v => ({ id: `native:${v.name}`, name: `💻 Device: ${v.name}` }));
+            }
+            
+            // Render options
+            selector.innerHTML = '';
+            
+            // Group Cloud
+            const cloudGroup = document.createElement('optgroup');
+            cloudGroup.label = "High Quality (Cloud)";
+            cloudVoices.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.name;
+                cloudGroup.appendChild(opt);
+            });
+            selector.appendChild(cloudGroup);
+            
+            // Group Native
+            if (nativeVoices.length > 0) {
+                const nativeGroup = document.createElement('optgroup');
+                nativeGroup.label = "Device Native (Free/Offline)";
+                nativeVoices.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.id;
+                    opt.textContent = v.name;
+                    nativeGroup.appendChild(opt);
+                });
+                selector.appendChild(nativeGroup);
+            }
+            
+            // Restore selection
+            selector.value = savedVoice;
+            
+            // Update state on change
+            selector.onchange = (e) => {
+                AppState.selectedVoice = e.target.value;
+                // Save settings?
+                saveStateToKV();
+            };
+        }
         
         // Setup Event Listeners
         function setupEventListeners() {
@@ -1193,41 +1260,54 @@
             try {
                 console.log('🔊 Speaking text...');
                 
-                // Try Puter AI TTS first
-                try {
-                    const audio = await puter.ai.txt2speech(text, {
-                        voice: AppState.selectedVoice,
-                        model: 'tts-1' // Explicitly set model for OpenAI voices
-                    });
-                    
-                    console.log('TTS Audio Object:', audio);
-                    
-                    // Return promise that resolves when playback finishes
-                    return new Promise((resolve) => {
-                        audio.onended = () => resolve();
-                        audio.onerror = (e) => {
-                            console.error('Audio playback error', e);
-                            resolve(); 
-                        };
-                        audio.play().catch(e => {
-                             console.error('Play error', e); 
-                             throw e; // Trigger fallback
+                // Check if user selected a native voice directly
+                const isNativeForce = AppState.selectedVoice.startsWith('native:');
+                
+                if (!isNativeForce) {
+                    // Try Puter AI TTS first
+                    try {
+                        const audio = await puter.ai.txt2speech(text, {
+                            voice: AppState.selectedVoice,
+                            model: 'tts-1'
                         });
-                    });
-                } catch (puterError) {
-                    console.warn('Puter TTS failed, trying native:', puterError);
-                    showToast(`Primary Voice Failed: ${puterError.message || 'Unknown'}`, 'warning');
-                    throw puterError; // Go to native fallback
+                        
+                        console.log('TTS Audio Object:', audio);
+                        
+                        return new Promise((resolve) => {
+                            audio.onended = () => resolve();
+                            audio.onerror = (e) => {
+                                console.error('Audio playback error', e);
+                                resolve(); 
+                            };
+                            audio.play().catch(e => {
+                                 console.error('Play error', e); 
+                                 throw e; 
+                            });
+                        });
+                    } catch (puterError) {
+                        console.warn('Puter TTS failed, trying native:', puterError);
+                        if (!isNativeForce) showToast(`Primary Voice Failed: ${puterError.message || 'Unknown'}`, 'warning');
+                        // Fall through to native
+                    }
                 }
                 
-            } catch (error) {
                 // Native Browser TTS Fallback
                 try {
                      const utterance = new SpeechSynthesisUtterance(text);
-                     // Select voice?
                      const voices = window.speechSynthesis.getVoices();
-                     // Try to find a good English voice
-                     const voice = voices.find(v => v.name.includes('Google') || v.name.includes('Microsoft')) || voices[0];
+                     
+                     let voice = null;
+                     if (isNativeForce) {
+                         // Find exact match by name (remove 'native:' prefix)
+                         const targetName = AppState.selectedVoice.substring(7);
+                         voice = voices.find(v => v.name === targetName);
+                     }
+                     
+                     // Fallback to best guess if no match or not forced
+                     if (!voice) {
+                        voice = voices.find(v => v.name.includes('Google') || v.name.includes('Microsoft')) || voices[0];
+                     }
+                     
                      if (voice) utterance.voice = voice;
                      
                      return new Promise((resolve) => {
