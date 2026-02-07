@@ -1010,16 +1010,26 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 
-                AppState.mediaRecorder = new MediaRecorder(stream);
+                // Use optimal mime type
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+                    ? 'audio/webm;codecs=opus' 
+                    : 'audio/webm';
+                
+                AppState.mediaRecorder = new MediaRecorder(stream, { mimeType });
                 AppState.audioChunks = [];
                 
                 AppState.mediaRecorder.ondataavailable = (event) => {
-                    AppState.audioChunks.push(event.data);
+                    if (event.data.size > 0) {
+                        AppState.audioChunks.push(event.data);
+                    }
                 };
                 
                 AppState.mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(AppState.audioChunks, { type: 'audio/webm' });
-                    await transcribeAudio(audioBlob);
+                    const blob = new Blob(AppState.audioChunks, { type: mimeType });
+                    // Puter API often needs a File object with extension
+                    const file = new File([blob], "recording.webm", { type: mimeType });
+                    
+                    await transcribeAudio(file);
                     
                     // Stop all tracks
                     stream.getTracks().forEach(track => track.stop());
@@ -1073,7 +1083,7 @@
                 
             } catch (error) {
                 console.error('Transcription error:', error);
-                showToast('Transcription failed', 'error');
+                showToast(`Transcription failed: ${error.message || 'Unknown error'}`, 'error');
             }
         }
         
