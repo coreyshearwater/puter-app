@@ -1186,36 +1186,55 @@
             }
         }
         
-        // Speak text using Puter.js txt2speech
+        // Speak text using Puter.js txt2speech with fallback
         async function speakText(text) {
             if (!text || !AppState.autoSpeak) return;
             
             try {
                 console.log('🔊 Speaking text...');
                 
-                const audio = await puter.ai.txt2speech(text, {
-                    voice: AppState.selectedVoice
-                });
-                
-                // Return promise that resolves when playback finishes
-                return new Promise((resolve) => {
-                    audio.onended = () => {
-                        resolve();
-                    };
-                    audio.onerror = (e) => {
-                        console.error('Audio playback error', e);
-                        resolve(); // Resolve anyway to continue flow
-                    };
-                    
-                    audio.play().catch(e => {
-                         console.error('Play error', e); 
-                         resolve(); 
+                // Try Puter AI TTS first
+                try {
+                    const audio = await puter.ai.txt2speech(text, {
+                        voice: AppState.selectedVoice
                     });
-                });
+                    
+                    // Return promise that resolves when playback finishes
+                    return new Promise((resolve) => {
+                        audio.onended = () => resolve();
+                        audio.onerror = (e) => {
+                            console.error('Audio playback error', e);
+                            resolve(); 
+                        };
+                        audio.play().catch(e => {
+                             console.error('Play error', e); 
+                             throw e; // Trigger fallback
+                        });
+                    });
+                } catch (puterError) {
+                    console.warn('Puter TTS failed, trying native:', puterError);
+                    throw puterError; // Go to native fallback
+                }
                 
             } catch (error) {
-                console.error('TTS error:', error);
-                showToast('Text-to-speech failed', 'error');
+                // Native Browser TTS Fallback
+                try {
+                     const utterance = new SpeechSynthesisUtterance(text);
+                     // Select voice?
+                     const voices = window.speechSynthesis.getVoices();
+                     // Try to find a good English voice
+                     const voice = voices.find(v => v.name.includes('Google') || v.name.includes('Microsoft')) || voices[0];
+                     if (voice) utterance.voice = voice;
+                     
+                     return new Promise((resolve) => {
+                         utterance.onend = () => resolve();
+                         utterance.onerror = () => resolve();
+                         window.speechSynthesis.speak(utterance);
+                     });
+                } catch (nativeError) {
+                    console.error('Native TTS error:', nativeError);
+                    showToast('Text-to-speech failed completely', 'error');
+                }
             }
         }
         
