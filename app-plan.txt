@@ -1,0 +1,84 @@
+You are Antigravity, the world's most capable agentic coding assistant (Gemini 3 Pro High + Claude Opus 4.5 Thinking mode enabled — use Claude for deep architectural reasoning, Gemini 3 Flash for fast iteration and UI polish).
+
+MISSION: Build a complete, production-quality, single-file HTML Puter.js v2 app called "GravityChat" — my personal forever-free AI workstation that runs 100% in the browser (even from a local file). It must default to completely free/unlimited models and features so I never have to pay anything if I don't want to, but optionally allow premium models with automatic graceful fallback to the best free one if credits run out.
+
+CORE REQUIREMENTS (non-negotiable):
+- Single index.html file only (no external files, no backend, no build step).
+- Load Puter.js with <script src="https://js.puter.com/v2/"></script>
+- Beautiful modern dark theme using Tailwind CSS CDN + daisyUI (or Flowbite if you prefer) — cyberpunk/neon dark vibe, responsive, mobile-friendly, glassmorphism cards, smooth animations.
+- Everything must be free by default (use only :free models, free voices, free image gen, etc.). Add a toggle "Enable Premium Models (costs credits)" — when OFF (default), force only $0 models/engines. When ON, allow selection of any model but implement rock-solid fallback.
+
+TECH STACK:
+- Pure HTML + Tailwind/daisyUI for UI
+- Vanilla JS (ES6+, async/await, clean modular functions, heavily commented)
+- All persistence via puter.kv (chat history, personas, settings, favorite models) — fallback to localStorage if kv not available
+- All AI calls via puter.ai.* (chat, speech2txt, txt2speech, txt2img, img2txt, embeddings, etc.)
+
+MUST-HAVE FEATURES (include EVERY one we discussed — no shortcuts):
+
+1. **Chat Interface**
+   - Scrollable chat history with user/AI bubbles (Markdown rendering for AI responses, code blocks executable)
+   - Streaming responses (use stream: true, typewriter effect)
+   - Message editing/retry/regenerate
+
+2. **Model Selector (Smart & Free-First)**
+   - Dropdown + search, populated dynamically via puter.ai.listModels()
+   - Show price ($0 = green "FREE", paid = orange with price)
+   - Sections: "Best Free" (default), "Premium", "Vision", "Uncensored"
+   - Default selected: z-ai/glm-4.5-air:free (or current best free — auto-detect top free reasoning model)
+   - Global toggle: "Enable Premium Models" (off by default)
+   - Fallback chain: try selected model → if error (especially "insufficient credits") → automatically retry with next best free model (hardcode priority list: z-ai/glm-4.5-air:free → arcee-ai/trinity-large-preview:free → liquid-lfm-2.5-1.2b-instruct:free → etc.)
+
+3. **Voice Chat (Full Duplex)**
+   - Mic button (hold to record or toggle)
+   - puter.ai.speech2txt() for input (cloud Whisper-level, free engines first)
+   - Auto TTS response with puter.ai.txt2speech() (best free voice first: "nova", "echo", etc. — dropdown for voice selection)
+   - Speaker button to toggle auto-speak
+   - Cloud-only (no load on my laptop)
+
+4. **Custom Personas**
+   - Sidebar tab with "Personas"
+   - Preloaded + user-create (name, system prompt, icon)
+   - Save/load via puter.kv
+   - Apply persona as system message to all chats
+   - Built-in starters: "Coding God", "Uncensored Bro", "Research Demon", "Shitposter"
+
+5. **File & Project Folder Superpowers**
+   - "Attach File" → puter.fs.pickFile() → read content → send to AI (auto vision if image via img2txt)
+   - "Open Project Folder" → puter.fs.pickFolder() → AI can list/read/write/delete files in that folder
+   - "Apply Edit" button on code blocks → write directly to selected file in project folder
+   - "Watch Folder" toggle → auto-detect file changes and notify AI ("file changed — review?")
+   - Drag & drop file support
+
+6. **Image Generation & Vision**
+   - Input box + "Generate Image" button → puter.ai.txt2img (FLUX or SD free models first)
+   - Uploaded images → automatic vision analysis (describe, OCR, explain charts)
+   - Gallery view for generated images
+
+7. **All Other Puter.js Goodies**
+   - Embeddings-based chat history search (semantic search over past messages)
+   - Export chat as Markdown/PDF/ZIP (with images/files)
+   - Share chat session via public Puter link
+   - Moderation toggle (puter.ai.moderate)
+   - Settings panel: default voice, streaming speed, temperature slider, max tokens, etc. (saved to kv)
+
+8. **Free-Forever Optimization**
+   - Everything works perfectly with only :free models/engines
+   - No feature gated behind payment
+   - If premium toggle on and credits low → graceful toast "Credits low — switching to free mode" + auto-fallback
+   - Auto-detect and prefer $0 everything
+
+UI/UX Goals:
+- Feels like a premium app (Cursor/ChatGPT/Claude Artifacts vibe)
+- Sidebar for Personas/Models/Settings/Files
+- Top bar with voice button, premium toggle, project folder indicator
+- Bottom input bar with attach/generate image buttons
+- Mobile-ready (virtual keyboard friendly)
+
+Deliverables:
+1. Complete single index.html (copy-paste ready)
+2. Detailed comments explaining every major section
+3. Setup instructions in comments (how to save as HTML, open in browser, first-time Puter signup popup)
+4. Bonus: Make it look insanely cool — add neon gradients, particle background, or subtle animations
+
+This is my dream personal AI — make it perfect. Use Claude Opus 4.5 Thinking for architecture, then Gemini 3 Flash for pixel-perfect UI implementation. Go all out.
