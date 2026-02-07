@@ -1071,11 +1071,23 @@
             try {
                 console.log('📝 Transcribing audio...');
                 
-                const text = await puter.ai.speech2txt(audioBlob);
+                const response = await puter.ai.speech2txt(audioBlob);
+                console.log('Transcription result:', response);
+                
+                let text = '';
+                if (typeof response === 'string') {
+                    text = response;
+                } else if (response && typeof response === 'object') {
+                    text = response.text || response.transcription || '';
+                }
                 
                 if (text && text.trim()) {
                     // Populate input with transcribed text
-                    document.getElementById('user-input').value = text;
+                    // Append if there's already text (with space)
+                    const input = document.getElementById('user-input');
+                    if (input.value) input.value += ' ' + text;
+                    else input.value = text;
+                    
                     showToast('Transcription complete!', 'success');
                 } else {
                     showToast('No speech detected', 'warning');
