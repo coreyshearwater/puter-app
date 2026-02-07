@@ -1196,8 +1196,11 @@
                 // Try Puter AI TTS first
                 try {
                     const audio = await puter.ai.txt2speech(text, {
-                        voice: AppState.selectedVoice
+                        voice: AppState.selectedVoice,
+                        model: 'tts-1' // Explicitly set model for OpenAI voices
                     });
+                    
+                    console.log('TTS Audio Object:', audio);
                     
                     // Return promise that resolves when playback finishes
                     return new Promise((resolve) => {
@@ -1213,6 +1216,7 @@
                     });
                 } catch (puterError) {
                     console.warn('Puter TTS failed, trying native:', puterError);
+                    showToast(`Primary Voice Failed: ${puterError.message || 'Unknown'}`, 'warning');
                     throw puterError; // Go to native fallback
                 }
                 
