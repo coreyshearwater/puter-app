@@ -779,7 +779,18 @@
         async function fetchModels() {
             try {
                 console.log('📥 Fetching models...');
-                const models = await puter.ai.listModels();
+                // Timeout promise
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout fetching models')), 5000)
+                );
+                
+                // Race between fetch and timeout
+                const models = await Promise.race([
+                    puter.ai.listModels(),
+                    timeout
+                ]);
+                
+                if (!models || !Array.isArray(models)) throw new Error('Invalid models response');
                 
                 AppState.allModels = models;
                 
@@ -790,22 +801,34 @@
                     return isFree;
                 });
                 
-                console.log(`✅ Loaded ${models.length} models (${AppState.freeModels.length} free)`);
-                
-                // Set default model to first available in fallback chain
-                const defaultModel = FREE_FALLBACK_CHAIN.find(id => 
-                    AppState.freeModels.some(m => m.id === id)
-                ) || AppState.freeModels[0]?.id || models[0]?.id;
-                
-                AppState.currentModel = defaultModel;
-                updateCurrentModelDisplay();
-                
-                // Render model list
-                renderModelList();
+                console.log(`✅ Loaded ${models.length} models`);
                 
             } catch (error) {
-                console.error('Failed to fetch models:', error);
-                showToast('Failed to load models', 'error');
+                console.error('Failed to fetch models, using fallback:', error);
+                
+                // Hardcoded fallback models
+                AppState.freeModels = [
+                    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: { input: 0, output: 0 } },
+                    { id: 'claude-3-haiku', name: 'Claude 3 Haiku', cost: { input: 0, output: 0 } },
+                    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', cost: { input: 0, output: 0 } },
+                    { id: 'meta-llama/Meta-Llama-3-8B-Instruct', name: 'Llama 3 8B', cost: { input: 0, output: 0 } }
+                ];
+                AppState.allModels = AppState.freeModels;
+                
+                showToast('Using offline/fallback model list', 'warning');
+            } finally {
+                // Set default model logic (runs for both success and fallback)
+                if (!AppState.currentModel) {
+                    const available = AppState.premiumEnabled ? AppState.allModels : AppState.freeModels;
+                    const defaultModel = FREE_FALLBACK_CHAIN.find(id => 
+                        available.some(m => m.id === id)
+                    ) || available[0]?.id || 'gpt-3.5-turbo';
+                    
+                    AppState.currentModel = defaultModel;
+                }
+                
+                updateCurrentModelDisplay();
+                renderModelList();
             }
         }
         
