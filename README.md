@@ -21,39 +21,47 @@ GravityChat is a powerful, single-file AI chat application that runs entirely in
 *   **System Prompts:** Define exactly how you want the AI to behave.
 *   **Persistence:** Your personas and settings are saved automatically.
 
-### 📁 File Management
-*   **Cloud Files:** Browse, create, and manage files in your Puter account directly from the app.
-*   **Attachments:** Attach files to chat for analysis.
-*   **Upload:** Drag & drop or upload local files.
+### 📁 Project Workspaces
+
+* **Folder Selection:** Switch between different project folders in your Puter account using the top-right selector.
+* **File Management:** Browse, create, and attach files from your selected workspace.
+* **Cloud Sync:** All changes are saved to your Puter cloud drive automatically.
 
 ### 🎨 Image Generation
-*   **AI Art:** Type `/image <prompt>` to generate images instantly.
-*   **Example:** `/image a cyberpunk city with neon rain`
 
-### 🔒 Privacy & Data
-*   **Client-Side:** Runs in your browser. No middleman servers (except Puter.js APIs).
-*   **Export:** Download full chat history as Markdown.
-*   **Clear History:** Wipe data with one click.
+* **AI Art:** Type `/image <prompt>` to generate images instantly.
+* **Example:** `/image a cyberpunk city with neon rain`
+
+### 🔒 Privacy & Security (Hardened)
+
+* **Client-Side:** Runs in your browser. No middleman servers (except Puter.js APIs).
+* **XSS Protection:** All Markdown output is sanitized with DOMPurify to prevent malicious code execution.
+* **Memory Safe:** Automatically manages chat history to prevent browser crashes during long sessions.
 
 ## 🛠️ Installation & Usage
 
 There are two ways to use GravityChat:
 
-### Option 1: Run Locally (Recommended for dev)
+### Option 1: Native App Mode (Recommended for Windows)
+
+Run the included batch script to launch GravityChat as a standalone desktop app (requires Chrome):
+
+```bash
+start.bat
+```
+
+### Option 2: Run Locally (Dev Mode)
 
 Since this uses modern browser APIs, it requires a local server context (not `file://`):
 
 ```bash
 # Using Python
 python -m http.server 8000
-
-# Using Node
-npx http-server
 ```
 
 Open `http://localhost:8000/index.html` in your browser.
 
-### Option 2: Run on Puter.com (Cloud)
+### Option 3: Run on Puter.com (Cloud)
 
 1.  Log in to your [Puter.com](https://puter.com) account.
 2.  Upload `index.html` to your file manager.

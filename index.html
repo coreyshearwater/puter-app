@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GravityChat - Free AI Workstation</title>
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <!-- Puter.js v2 -->
     <script src="https://js.puter.com/v2/"></script>
@@ -14,6 +16,10 @@
     
     <!-- Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- DOMPurify for XSS prevention -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+    <!-- DOMPurify for XSS prevention -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
     
     <!-- Highlight.js for code syntax highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
@@ -39,6 +45,12 @@
             background: linear-gradient(135deg, var(--bg-void) 0%, #0d0d14 100%);
             color: var(--text-bright);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            user-select: none;
+        }
+
+        /* Allow selection in content areas */
+        .chat-message, .prose, input, textarea, pre, code {
+            user-select: text;
         }
         
         /* Glassmorphism Cards */
@@ -110,7 +122,7 @@
             grid-row: 1 / 4;
             background: var(--bg-dark);
             border-right: 1px solid var(--glass-border);
-            overflow-y: auto;
+            /* overflow-y: auto; Moved to tab-content */
         }
         
         #top-bar {
@@ -267,7 +279,7 @@
     <div id="app-container">
         
         <!-- Sidebar -->
-        <div id="sidebar" class="p-4">
+        <div id="sidebar" class="p-4 flex flex-col h-full">
             <div class="mb-6">
                 <h1 class="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent">
                     ⚡ GravityChat
@@ -284,7 +296,7 @@
             </div>
             
             <!-- Tab Content Placeholders -->
-            <div id="tab-personas" class="tab-content">
+            <div id="tab-personas" class="tab-content flex-1 overflow-y-auto min-h-0">
                 <!-- Personas List -->
                 <div id="personas-list" class="space-y-2 mb-4">
                     <!-- Will be populated by JS -->
@@ -296,7 +308,7 @@
                 </button>
             </div>
             
-            <div id="tab-models" class="tab-content hidden">
+            <div id="tab-models" class="tab-content flex-1 overflow-y-auto min-h-0 hidden">
                 <!-- Model Search -->
                 <input 
                     type="text" 
@@ -311,7 +323,7 @@
                 </div>
             </div>
             
-            <div id="tab-settings" class="tab-content hidden">
+            <div id="tab-settings" class="tab-content flex-1 overflow-y-auto min-h-0 hidden">
                 <div class="space-y-4">
                     <div>
                         <label class="text-sm font-semibold mb-2 block">Voice Settings</label>
@@ -359,19 +371,19 @@
                     <!-- Data Management -->
                     <div>
                         <label class="text-sm font-semibold mb-2 block">Data</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button id="btn-export-chat" class="btn btn-sm btn-outline btn-info">
-                                📥 Export Chat
+                        <div class="grid grid-cols-2 gap-3 mt-2">
+                            <button id="btn-export-chat" class="btn btn-sm btn-outline border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 hover:text-cyan-300 tracking-wider font-medium text-xs uppercase transition-all duration-300">
+                                Export
                             </button>
-                            <button id="btn-clear-chat" class="btn btn-sm btn-outline btn-error">
-                                🗑️ Clear Chat
+                            <button id="btn-clear-chat" class="btn btn-sm btn-outline border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-400 hover:text-red-300 tracking-wider font-medium text-xs uppercase transition-all duration-300">
+                                Clear
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div id="tab-files" class="tab-content hidden">
+            <div id="tab-files" class="tab-content flex-1 overflow-y-auto min-h-0 hidden">
                 <!-- Toolbar -->
                 <div class="flex gap-2 mb-3">
                     <button id="btn-refresh-files" class="btn btn-sm btn-square btn-ghost">
@@ -415,11 +427,11 @@
                 </label>
                 
                 <!-- Project Folder Indicator -->
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 cursor-pointer hover:text-cyan-400 transition" onclick="selectProjectFolder()" title="Change Project Folder">
                     <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                     </svg>
-                    <span id="folder-indicator" class="text-xs text-gray-500">No folder</span>
+                    <span id="folder-indicator" class="text-xs text-gray-500">Select Folder</span>
                 </div>
             </div>
         </div>
@@ -444,6 +456,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
                 </svg>
             </button>
+            <input type="file" id="file-input" class="hidden" multiple />
             
             <!-- Mic Button -->
             <button id="btn-mic" class="btn btn-ghost btn-sm" title="Voice Input">
@@ -504,13 +517,16 @@
             activePersona: null,
             
             // Files
-            currentPath: '~/',
+            currentPath: '/',
             files: [],
         };
         
         // Wait for Puter to load
         window.addEventListener('DOMContentLoaded', async () => {
             console.log('✅ DOM loaded');
+            
+            // Setup event listeners immediately
+            setupEventListeners();
             
             // Check if Puter is available
             if (typeof puter === 'undefined') {
@@ -540,9 +556,6 @@
                 showToast('Auth failed. App will work in limited mode.', 'warning');
             }
             
-            // Setup event listeners
-            setupEventListeners();
-            
             // Fetch models
             await fetchModels();
             
@@ -568,11 +581,24 @@
                     // Add active to clicked tab
                     tab.classList.add('active');
                     
-                    // Hide all tab contents
-                    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
-                    // Show corresponding tab content
                     const tabName = tab.dataset.tab;
-                    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+                    console.log(`🔘 Tab clicked: ${tabName}`);
+                    
+                    // Hide all tab contents
+                    document.querySelectorAll('.tab-content').forEach(tc => {
+                        tc.classList.add('hidden');
+                        tc.style.display = 'none'; // Force hide
+                    });
+                    
+                    // Show corresponding tab content
+                    const content = document.getElementById(`tab-${tabName}`);
+                    if (content) {
+                        content.classList.remove('hidden');
+                        content.style.display = 'flex'; // Keep flex for layout
+                        content.style.flexDirection = 'column';
+                    } else {
+                        console.error(`❌ Content ID tab-${tabName} not found!`);
+                    }
                 });
             });
             
@@ -637,10 +663,39 @@
                 AppState.maxTokens = parseInt(e.target.value);
             });
             
-            // Placeholder for file attach
+            // File attach button
             document.getElementById('btn-attach').addEventListener('click', () => {
-                showToast('File attachment coming in Phase 4!', 'info');
+                document.getElementById('file-input').click();
             });
+            
+            // Handle file selection
+            document.getElementById('file-input').addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    files.forEach(file => {
+                        // Create a file object for attachment
+                        const attachment = {
+                            name: file.name,
+                            type: file.type,
+                            size: file.size,
+                            content: null, // Will read if needed
+                            file: file // Keep reference
+                        };
+                        
+                        AppState.attachedFiles.push(attachment);
+                        renderAttachments();
+                    });
+                    
+                    // Reset input
+                    e.target.value = '';
+                }
+            });
+        }
+        
+        // Render attached files in input area
+        function renderAttachments() {
+            // Implementation provided later or simple toast for now
+            showToast(`${AppState.attachedFiles.length} files attached`, 'success');
         }
         
         // ==========================================
@@ -902,6 +957,11 @@
         function createAIMessageElement() {
             const container = document.getElementById('messages-container');
             
+            // Limit chat history to prevent memory leaks (keep last 50 messages)
+            if (container.children.length > 50) {
+                container.removeChild(container.firstChild); // Remove oldest
+            }
+            
             const bubble = document.createElement('div');
             bubble.className = 'message-bubble message-ai slide-in';
             bubble.innerHTML = '<span class="streaming-cursor"></span>';
@@ -912,19 +972,27 @@
             return bubble;
         }
         
-        // Render markdown with code highlighting
+        // Render markdown with code highlighting and sanitization
         function renderMarkdown(text) {
+            if (!text) return '';
+            
             // Use marked.js
-            const html = marked.parse(text);
+            const rawHtml = marked.parse(text);
             
-            // Apply syntax highlighting to code blocks after rendering
-            setTimeout(() => {
-                document.querySelectorAll('pre code').forEach((block) => {
-                    hljs.highlightBlock(block);
-                });
-            }, 0);
+            // Sanitize HTML (XSS Protection)
+            const cleanHtml = DOMPurify.sanitize(rawHtml);
             
-            return html;
+            // Apply syntax highlighting
+            // We need to return the HTML, but highlight.js works on DOM elements.
+            // We can wrap it in a temp div to highlight, then return innerHTML.
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = cleanHtml;
+            
+            tempDiv.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+            
+            return tempDiv.innerHTML;
         }
         
         // Scroll chat to bottom
@@ -1185,17 +1253,25 @@
                 console.log('✅ State saved to puter.kv');
             } catch (error) {
                 console.warn('Failed to save to puter.kv:', error);
-                // Fallback to localStorage
-                localStorage.setItem('gravitychat_personas', JSON.stringify(AppState.personas));
-                localStorage.setItem('gravitychat_active_persona', AppState.activePersona?.id || null);
-                localStorage.setItem('gravitychat_settings', JSON.stringify({
-                    temperature: AppState.temperature,
-                    maxTokens: AppState.maxTokens,
-                    autoSpeak: AppState.autoSpeak,
-                    selectedVoice: AppState.selectedVoice,
-                    premiumEnabled: AppState.premiumEnabled,
-                    currentModel: AppState.currentModel,
-                }));
+                
+                try {
+                    // Fallback to localStorage
+                    localStorage.setItem('gravitychat_personas', JSON.stringify(AppState.personas));
+                    localStorage.setItem('gravitychat_active_persona', AppState.activePersona?.id || null);
+                    localStorage.setItem('gravitychat_settings', JSON.stringify({
+                        temperature: AppState.temperature,
+                        maxTokens: AppState.maxTokens,
+                        autoSpeak: AppState.autoSpeak,
+                        selectedVoice: AppState.selectedVoice,
+                        premiumEnabled: AppState.premiumEnabled,
+                        currentModel: AppState.currentModel,
+                    }));
+                } catch (localError) {
+                    console.error('LocalStorage failed:', localError);
+                    if (localError.name === 'QuotaExceededError' || localError.message.includes('quota')) {
+                        showToast('Storage full! Please delete some personas or clear data.', 'warning');
+                    }
+                }
             }
         }
         
@@ -1305,6 +1381,18 @@
                 renderBreadcrumbs(path);
                 
                 const list = document.getElementById('file-list');
+                
+                // Check if signed in
+                if (typeof puter === 'undefined' || !(await puter.auth.isSignedIn())) {
+                    list.innerHTML = `
+                        <div class="text-center p-4">
+                            <p class="text-sm text-gray-400 mb-2">Sign in to access files</p>
+                            <button onclick="puter.auth.signIn()" class="btn btn-xs btn-primary">Sign In</button>
+                        </div>
+                    `;
+                    return;
+                }
+                
                 list.innerHTML = '<div class="text-center p-4"><span class="loading loading-spinner"></span></div>';
                 
                 // Fetch files
@@ -1321,9 +1409,29 @@
                 
             } catch (error) {
                 console.error('Failed to load files:', error);
-                showToast('Failed to list files', 'error');
-                document.getElementById('file-list').innerHTML = 
-                    '<p class="text-sm text-red-400 p-2">Error loading files</p>';
+                
+                // Detailed error for user
+                let msg = 'Failed to access files.';
+                if (error.message) msg += ` (${error.message})`;
+                
+                showToast(msg, 'error');
+                
+                document.getElementById('file-list').innerHTML = `
+                    <div class="p-4 text-center">
+                        <p class="text-sm text-red-400 mb-2">Error: ${error.message || 'Unknown error'}</p>
+                        ${path === '~/' ? 
+                            `<button onclick="loadFiles('/')" class="btn btn-xs btn-primary mb-2">Try Root (/)</button>` : 
+                            `<button onclick="loadFiles(AppState.currentPath)" class="btn btn-xs btn-outline">Retry</button>`
+                        }
+                        <button onclick="puter.auth.signOut()" class="btn btn-xs btn-ghost text-xs mt-2">Sign Out & Retry</button>
+                    </div>
+                `;
+                
+                // Auto-retry root if home fails
+                if (path === '~/' && (error.message || '').includes('not found')) {
+                    console.log('~/ not found, trying /');
+                    loadFiles('/');
+                }
             }
         }
         
@@ -1549,6 +1657,48 @@
         // ==========================================
         // PHASE 5: EXPORT & POLISH
         // ==========================================
+
+        // ==========================================
+        
+        // Select Project Folder
+        async function selectProjectFolder() {
+            const path = prompt('Enter project folder path (e.g., /MyProject):', AppState.currentPath);
+            if (!path) return;
+            
+            try {
+                // Check if exists
+                const stat = await puter.fs.stat(path);
+                if (!stat.isDirectory()) {
+                    showToast('Not a directory', 'error');
+                    return;
+                }
+                
+                AppState.currentPath = path;
+                document.getElementById('folder-indicator').textContent = path === '/' ? 'Root' : path.split('/').pop();
+                document.getElementById('folder-indicator').title = path;
+                loadFiles(path);
+                showToast(`Project set to ${path}`, 'success');
+                
+            } catch (error) {
+                console.error('Folder select error:', error);
+                if (error.code === 'ENOENT' || error.message.includes('found')) {
+                     // Offer to create
+                     if (confirm(`Folder '${path}' not found. Create it?`)) {
+                         try {
+                             await puter.fs.mkdir(path);
+                             AppState.currentPath = path;
+                             document.getElementById('folder-indicator').textContent = path.split('/').pop();
+                             loadFiles(path);
+                             showToast(`Created project ${path}`, 'success');
+                         } catch (createErr) {
+                             showToast('Failed to create folder', 'error');
+                         }
+                     }
+                } else {
+                    showToast('Error accessing folder', 'error');
+                }
+            }
+        }
 
         // Export Chat to Markdown
         function exportChat() {
