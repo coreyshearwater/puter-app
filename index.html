@@ -631,13 +631,9 @@
                 renderModelList(e.target.value);
             });
             
-            // Mic button - toggle recording
+            // Mic button - toggle voice session
             document.getElementById('btn-mic').addEventListener('click', () => {
-                if (AppState.isRecording) {
-                    stopRecording();
-                } else {
-                    startRecording();
-                }
+                toggleVoiceSession();
             });
             
             // Auto-speak toggle
@@ -1005,45 +1001,97 @@
         // PHASE 2: VOICE CHAT (STT/TTS)
         // ==========================================
         
-        // Start recording audio
+        // Start recording audio (with VAD option)
         async function startRecording() {
             try {
+                // If already recording, stop manually
+                if (AppState.isRecording) {
+                    stopRecording();
+                    return;
+                }
+
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                AppState.audioStream = stream;
                 
-                // Use optimal mime type
-                const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-                    ? 'audio/webm;codecs=opus' 
-                    : 'audio/webm';
+                // Visual feedback
+                const micBtn = document.getElementById('btn-mic');
+                micBtn.classList.add('btn-error');
+                micBtn.classList.add('animate-pulse');
                 
+                // VAD Setup
+                const audioContext = new AudioContext();
+                const source = audioContext.createMediaStreamSource(stream);
+                const analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+                
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                
+                // config
+                const silenceThreshold = 10; // Sensitivity (0-255)
+                const silenceDelay = 1500; // ms to wait before cutting
+                let silenceStart = Date.now();
+                let isSpeaking = false;
+                
+                // Initialize Recorder
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
                 AppState.mediaRecorder = new MediaRecorder(stream, { mimeType });
                 AppState.audioChunks = [];
                 
-                AppState.mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        AppState.audioChunks.push(event.data);
-                    }
+                AppState.mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) AppState.audioChunks.push(e.data);
                 };
                 
                 AppState.mediaRecorder.onstop = async () => {
-                    const blob = new Blob(AppState.audioChunks, { type: mimeType });
-                    // Puter API often needs a File object with extension
-                    const file = new File([blob], "recording.webm", { type: mimeType });
-                    
-                    await transcribeAudio(file);
-                    
-                    // Stop all tracks
-                    stream.getTracks().forEach(track => track.stop());
+                    // Only transcribe if we actually recorded something meaningful
+                     if (AppState.audioChunks.length > 0) {
+                        const blob = new Blob(AppState.audioChunks, { type: mimeType });
+                        const file = new File([blob], "voice.webm", { type: mimeType });
+                        
+                        // Show "Thinking..." or similar
+                        showToast('Processing speech...', 'info');
+                        await transcribeAudio(file);
+                     }
                 };
                 
                 AppState.mediaRecorder.start();
                 AppState.isRecording = true;
                 
-                // Update mic button visual
-                const micBtn = document.getElementById('btn-mic');
-                micBtn.classList.add('btn-error');
-                micBtn.classList.add('animate-pulse');
+                // VAD Loop
+                const checkSilence = () => {
+                    if (!AppState.isRecording) {
+                        audioContext.close();
+                        return;
+                    }
+                    
+                    analyser.getByteFrequencyData(dataArray);
+                    
+                    // Calculate average volume
+                    let sum = 0;
+                    for(let i = 0; i < bufferLength; i++) sum += dataArray[i];
+                    const average = sum / bufferLength;
+                    
+                    // Check volume
+                    if (average > silenceThreshold) {
+                        // Speaking
+                        silenceStart = Date.now();
+                        isSpeaking = true;
+                    } else {
+                        // Silence
+                        if (isSpeaking && (Date.now() - silenceStart > silenceDelay)) {
+                            // Silence timeout reached -> Stop and Transcribe
+                            console.log('Silence detected, processing...');
+                            stopRecording(); // This triggers onstop -> transcribe
+                            return; // Stop loop
+                        }
+                    }
+                    
+                    requestAnimationFrame(checkSilence);
+                };
                 
-                showToast('Recording... Click mic again to stop', 'info');
+                checkSilence();
+                showToast('Listening... Speak now', 'info');
                 
             } catch (error) {
                 console.error('Failed to start recording:', error);
@@ -1062,7 +1110,10 @@
                 micBtn.classList.remove('btn-error');
                 micBtn.classList.remove('animate-pulse');
                 
-                showToast('Processing audio...', 'info');
+                // Stop input stream
+                if (AppState.audioStream) {
+                    AppState.audioStream.getTracks().forEach(track => track.stop());
+                }
             }
         }
         
@@ -1083,19 +1134,55 @@
                 
                 if (text && text.trim()) {
                     // Populate input with transcribed text
-                    // Append if there's already text (with space)
                     const input = document.getElementById('user-input');
                     if (input.value) input.value += ' ' + text;
                     else input.value = text;
                     
-                    showToast('Transcription complete!', 'success');
+                    showToast('Transcribed: ' + text.substring(0, 20) + '...', 'success');
+                    
+                    // Auto-send in continuous mode
+                    if (AppState.isVoiceSession) {
+                        await sendMessage();
+                    }
                 } else {
                     showToast('No speech detected', 'warning');
+                }
+                
+                // Restart listening if in session
+                if (AppState.isVoiceSession) {
+                    // Short delay to prevent catching own echo if any
+                    setTimeout(() => startRecording(), 500); 
                 }
                 
             } catch (error) {
                 console.error('Transcription error:', error);
                 showToast(`Transcription failed: ${error.message || 'Unknown error'}`, 'error');
+                
+                // Retry listening even on error?
+                // limit retries? For now, yes, retry
+                if (AppState.isVoiceSession) {
+                     setTimeout(() => startRecording(), 1000);
+                }
+            }
+        }
+
+        // Toggle Continuous Voice Session
+        function toggleVoiceSession() {
+            if (AppState.isVoiceSession) {
+                // Turn OFF
+                AppState.isVoiceSession = false;
+                stopRecording();
+                showToast('Continuous Mode: OFF', 'info');
+                document.getElementById('btn-mic').classList.remove('btn-secondary'); // Visual indicator
+            } else {
+                // Turn ON
+                AppState.isVoiceSession = true;
+                // If we were already manually recording, just switch mode
+                if (!AppState.isRecording) {
+                    startRecording();
+                }
+                showToast('Continuous Mode: ON - Auto-sending...', 'success');
+                document.getElementById('btn-mic').classList.add('btn-secondary');
             }
         }
         
@@ -1110,8 +1197,21 @@
                     voice: AppState.selectedVoice
                 });
                 
-                // Play the audio
-                audio.play();
+                // Return promise that resolves when playback finishes
+                return new Promise((resolve) => {
+                    audio.onended = () => {
+                        resolve();
+                    };
+                    audio.onerror = (e) => {
+                        console.error('Audio playback error', e);
+                        resolve(); // Resolve anyway to continue flow
+                    };
+                    
+                    audio.play().catch(e => {
+                         console.error('Play error', e); 
+                         resolve(); 
+                    });
+                });
                 
             } catch (error) {
                 console.error('TTS error:', error);
