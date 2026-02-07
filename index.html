@@ -1266,9 +1266,10 @@
                 if (!isNativeForce) {
                     // Try Puter AI TTS first
                     try {
+                        console.log(`🔊 Attempting Cloud TTS: ${AppState.selectedVoice}`);
                         const audio = await puter.ai.txt2speech(text, {
                             voice: AppState.selectedVoice,
-                            model: 'tts-1'
+                            model: 'openai/tts-1' // Try fully qualified model
                         });
                         
                         console.log('TTS Audio Object:', audio);
@@ -1285,8 +1286,12 @@
                             });
                         });
                     } catch (puterError) {
-                        console.warn('Puter TTS failed, trying native:', puterError);
-                        if (!isNativeForce) showToast(`Primary Voice Failed: ${puterError.message || 'Unknown'}`, 'warning');
+                        console.warn('Puter TTS failed details:', puterError);
+                        // Try to extract useful error info
+                        let errMsg = puterError.message || puterError.toString();
+                        if (errMsg === '[object Object]') errMsg = JSON.stringify(puterError);
+                        
+                        if (!isNativeForce) showToast(`Cloud Voice Failed: ${errMsg}`, 'warning');
                         // Fall through to native
                     }
                 }
