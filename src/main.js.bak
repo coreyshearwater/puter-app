@@ -1,0 +1,236 @@
+console.log('🚀 MAIN.JS EXECUTING via ?v=debug2');
+import { AppState } from './state.js';
+import { loadStateFromKV, saveStateToKV } from './services/storage.js';
+import { initializePersonas, selectPersona, deletePersona, createPersona } from './ui/sidebar/personas.js';
+import { fetchModels, selectModel, renderModelList, toggleGrokMenu } from './ui/sidebar/models.js';
+import { renderSettings } from './ui/sidebar/settings.js';
+import { initializeSessions, createNewSession, switchSession, deleteSession, syncCurrentSession } from './ui/sidebar/sessions.js';
+import { loadVoices } from './services/voice.js';
+import { loadFiles, previewFile, deleteFile, createNewFile, createNewFolder } from './services/file-manager.js';
+import { setupInputListeners, removeAttachment } from './ui/input.js';
+import { clearChat, exportChat } from './ui/chat.js';
+import { renderMediaLab, initMediaParams } from './ui/media-lab.js';
+import { indexProject, loadIndexFromKV } from './services/memory.js';
+import { applyTheme } from './utils/theme.js';
+import { executeInSandbox } from './services/sandbox.js';
+import { showToast } from './utils/toast.js';
+
+// Namespace for global access (legacy support for string templates)
+window.gravityChat = {
+    loadFiles,
+    previewFile,
+    deleteFile,
+    selectPersona,
+    deletePersona,
+    selectModel,
+    toggleGrokMenu,
+    renderModelList,
+    switchSession,
+    deleteSession,
+    removeAttachment,
+    clearChat: () => {
+        clearChat(); // Clear DOM
+        syncCurrentSession(); // Update session state
+    },
+    exportChat,
+    runCodeBlock: async (btn, lang) => {
+        const pre = btn.closest('pre');
+        const codeElement = pre.querySelector('code');
+        const code = codeElement.innerText;
+        
+        btn.disabled = true;
+        btn.innerText = '⌛...';
+        
+        const result = await executeInSandbox(code, lang);
+        
+        btn.disabled = false;
+        btn.innerText = '▶ RUN';
+        
+        if (result) {
+            // Remove existing result if any
+            const existing = pre.nextElementSibling;
+            if (existing && existing.classList.contains('sandbox-output')) {
+                existing.remove();
+            }
+            
+            const outputDiv = document.createElement('div');
+            outputDiv.className = 'sandbox-output glass-card p-3 mt-2 text-xs font-mono slide-in';
+            outputDiv.style.borderLeft = result.exitCode === 0 ? '4px solid var(--neon-green)' : '4px solid var(--neon-orange)';
+            
+            let content = '';
+            if (result.stdout) content += `<div class="text-gray-300">${result.stdout}</div>`;
+            if (result.stderr) content += `<div class="text-red-400 mt-1">${result.stderr}</div>`;
+            if (!result.stdout && !result.stderr) content += `<div class="text-gray-500 italic">Program exited with code ${result.exitCode} (no output)</div>`;
+            
+            outputDiv.innerHTML = `
+                <div class="flex justify-between mb-1">
+                    <span class="text-[8px] uppercase tracking-widest text-gray-500">Output (${lang})</span>
+                    <button class="text-gray-500 hover:text-white" onclick="this.closest('.sandbox-output').remove()">×</button>
+                </div>
+                ${content}
+            `;
+            pre.after(outputDiv);
+        }
+    },
+    setPremium: (enabled) => {
+        AppState.premiumEnabled = enabled;
+        renderModelList();
+        saveStateToKV();
+    },
+    setMediaParam: (param, value) => {
+        AppState.mediaParams[param] = value;
+        console.log(`🎨 Media Param: ${param} = ${value}`);
+    },
+    openMediaLab: () => renderMediaLab()
+};
+
+async function init() {
+    console.log('GravityChat initializing...');
+    
+    try {
+        console.log('1. Calling initMediaParams...');
+        initMediaParams();
+        console.log('2. initMediaParams done.');
+    } catch (e) { console.error('initMediaParams failed', e); }
+    
+    // Auth Check
+    try {
+        console.log('3. Checking Auth...');
+        if (typeof puter === 'undefined') {
+             console.error('CRITICAL: puter is undefined!');
+             showToast('Puter API missing', 'error');
+             return;
+        }
+        if (!(await puter.auth.isSignedIn())) {
+            console.log('4. Not signed in, signing in...');
+            showToast('SignIn required', 'info');
+            await puter.auth.signIn();
+        }
+        console.log('5. Auth successful.');
+        const user = await puter.auth.getUser();
+        showToast(`Welcome ${user.username}`, 'success');
+    } catch (e) { console.warn('Puter Auth failed', e); }
+
+    // State & Listeners
+    try {
+        console.log('6. Setting up listeners...');
+        setupGlobalListeners();
+        setupInputListeners();
+        console.log('7. Listeners setup done.');
+    } catch (e) { console.error('Listeners setup failed', e); }
+
+    try {
+        console.log('8. Loading state...');
+        await loadStateFromKV();
+        await loadIndexFromKV();
+        console.log('9. State loaded.');
+    } catch (e) { console.error('State loading failed', e); }
+    
+    // UI Init
+    try {
+        console.log('10. UI Init...');
+        applyTheme();
+        initializePersonas();
+        console.log('📌 Calling initializeSessions()...');
+        initializeSessions(); // Init Sessions
+        renderSettings();
+        loadVoices();
+        loadFiles(AppState.currentPath);
+        await fetchModels();
+        console.log('11. UI Init done.');
+    } catch (e) { console.error('UI Init failed', e); }
+    
+    console.log('GravityChat Ready!');
+}
+
+function setupGlobalListeners() {
+    // Tabs (Delegated for better reliability)
+    const nav = document.querySelector('aside nav');
+    if (nav) {
+        nav.addEventListener('click', (e) => {
+            const tab = e.target.closest('.nav-tab');
+            if (!tab) return;
+            
+            const tabName = tab.dataset.tab;
+            const wasActive = tab.classList.contains('active');
+            
+            // Always hide everything first
+            const allTabs = nav.querySelectorAll('.nav-tab');
+            allTabs.forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+
+            document.querySelectorAll('.gchat-tab-panel').forEach(tc => {
+                tc.classList.add('hidden');
+                tc.style.display = 'none';
+            });
+
+            // If it was already active, we just finished "deactivating" it
+            if (wasActive) {
+                console.log(`Tab toggled off: ${tabName}`);
+                return;
+            }
+
+            // Otherwise, activate it
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+            
+            const targetContent = document.getElementById(`tab-${tabName}`);
+            if (targetContent) {
+                targetContent.classList.remove('hidden');
+                targetContent.style.display = 'flex';
+                targetContent.style.flexDirection = 'column';
+                console.log(`Tab switch confirmed: ${tabName}`);
+            }
+        });
+
+        nav.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                const tab = e.target.closest('.nav-tab');
+                if (tab) {
+                    e.preventDefault();
+                    tab.click();
+                }
+            }
+        });
+    }
+
+    // Premium Toggle
+    const premToggle = document.getElementById('premium-toggle');
+    premToggle.checked = AppState.premiumEnabled;
+    premToggle.onchange = (e) => window.gravityChat.setPremium(e.target.checked);
+
+    // Folder select
+    document.getElementById('folder-indicator-container').onclick = async () => {
+        const { selectDirectory } = await import('./services/file-manager.js');
+        await selectDirectory();
+    };
+
+    // Media Lab
+    document.getElementById('btn-open-medialab').onclick = () => window.gravityChat.openMediaLab();
+
+    // Model search
+    document.getElementById('model-search').oninput = (e) => renderModelList(e.target.value);
+
+    // Add Persona
+    document.getElementById('btn-add-persona').onclick = createPersona;
+
+    // File buttons
+    document.getElementById('btn-new-file').onclick = createNewFile;
+    document.getElementById('btn-new-folder').onclick = createNewFolder;
+    document.getElementById('btn-refresh-files').onclick = () => loadFiles(AppState.currentPath);
+    document.getElementById('btn-index-memory').onclick = () => indexProject();
+
+    // Update model display event
+    document.addEventListener('updateModelDisplay', () => {
+        document.getElementById('current-model-display').textContent = AppState.currentModel;
+    });
+}
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+window.addEventListener('error', (e) => console.error('Global error:', e));

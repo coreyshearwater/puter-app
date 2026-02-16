@@ -29,3 +29,14 @@ tmp/
 
 # Puter specific
 .puter/
+
+# Local Binaries
+bin/
+build/
+dist/
+*.spec
+*.lnk
+chrome_data/
+Grok-Api-main/
+codeaudit/
+tmp/
