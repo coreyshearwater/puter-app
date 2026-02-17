@@ -5,14 +5,15 @@ import { showToast } from '../utils/toast.js';
  * Service to interact with the local Grok API server.
  * Requires the Python server in Grok-Api-main to be running.
  */
-export async function askGrok(message, model = 'grok-3-auto', stream = false) {
+export async function askGrok(message, model = 'grok-3-auto', stream = false, temperature = 0.7) {
     const url = AppState.grokApiUrl || 'http://127.0.0.1:6969/ask';
     
     try {
         const requestBody = {
             message: message,
             model: model,
-            stream: stream
+            stream: stream,
+            temperature: temperature
         };
         if (AppState.grokProxy) requestBody.proxy = AppState.grokProxy;
         if (AppState.grokConversationData) requestBody.extra_data = AppState.grokConversationData;
@@ -20,7 +21,8 @@ export async function askGrok(message, model = 'grok-3-auto', stream = false) {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            keepalive: true // Attempt to keep connection alive in background
         });
 
         if (!response.ok) {
@@ -62,7 +64,7 @@ export async function askGrok(message, model = 'grok-3-auto', stream = false) {
                                     if (data.extra_data) AppState.grokConversationData = data.extra_data;
                                 }
                             } catch (e) {
-                                console.warn('Grok stream parse error:', e);
+                                console.warn('Grok stream parse error:', e?.message || e, '| raw line:', line?.substring(0, 200));
                             }
                         }
                     }

@@ -2,7 +2,7 @@ import { AppState } from './state.js';
 import { loadStateFromKV, saveStateToKV } from './services/storage.js';
 import { initializeOracularControls } from './ui/oracular.js';
 import { initializePersonas, selectPersona, deletePersona, createPersona } from './ui/sidebar/personas.js';
-import { fetchModels, selectModel, renderModelList, toggleGrokMenu } from './ui/sidebar/models.js';
+import { fetchModels, selectModel, renderModelList, toggleGrokMenu, refreshModels } from './ui/sidebar/models.js';
 import { renderSettings } from './ui/sidebar/settings.js';
 import { initializeSessions, createNewSession, switchSession, deleteSession, syncCurrentSession } from './ui/sidebar/sessions.js';
 import { loadVoices } from './services/voice.js';
@@ -14,6 +14,8 @@ import { indexProject, loadIndexFromKV } from './services/memory.js';
 import { applyTheme } from './utils/theme.js';
 import { executeInSandbox } from './services/sandbox.js';
 import { showToast } from './utils/toast.js';
+import { diagnosePuterModels, stopGeneration } from './services/ai.js';
+import { openVoiceBrowser } from './ui/voice-browser.js';
 
 // Namespace for global access (legacy support for string templates)
 window.gravityChat = {
@@ -24,10 +26,14 @@ window.gravityChat = {
     deletePersona,
     selectModel,
     toggleGrokMenu,
+    refreshModels,
     renderModelList,
     switchSession,
     deleteSession,
     removeAttachment,
+    diagnosePuterModels,
+    stopGeneration,
+    openVoiceBrowser,
     clearChat: () => {
         clearChat(); // Clear DOM
         syncCurrentSession(); // Update session state
@@ -176,7 +182,7 @@ async function completeInit() {
     try {
         setupGlobalListeners();
         setupInputListeners();
-    } catch (e) { console.error('Listeners setup failed', e); }
+    } catch (e) { console.error('Listeners setup failed:', e?.message || e, e?.stack || ''); }
     
     // UI Init
     try {
@@ -301,6 +307,7 @@ function setupGlobalListeners() {
 
     // Model search
     document.getElementById('model-search').oninput = (e) => renderModelList(e.target.value);
+    document.getElementById('btn-refresh-models').onclick = () => refreshModels();
 
     // Add Persona
     document.getElementById('btn-add-persona').onclick = createPersona;

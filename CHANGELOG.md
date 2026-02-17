@@ -2,6 +2,47 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.4.0] - "Live Roster" - 2026-02-17
+
+### Added
+
+- **Voice**: **Edge TTS Bridge** integration (`edge_tts_server.py`) providing access to 300+ high-quality Microsoft voices for free.
+- **Voice**: New **Voice Browser** modal with search, language filters, and real-time voice previews (▶).
+- **Voice**: Expanded Cloud voices to 40+ AWS Polly options supporting 20+ languages (Finnish, Japanese, Korean, etc.).
+- **Models**: **Quality Tier Badging** (S/A/B/C) for all models to help users find the most capable free and premium models.
+- **Models**: Refresh button (🔄) next to the model search input with animated feedback and toast reporting.
+- **Chat**: Improved **Stop Generation** (⏹) button that now pins to the bottom-right and correctly aborts both text streaming and audio playback.
+- **Settings**: Redesigned **Temperature Slider** with a sleek thin-line UI, small thumb, and **magnetic snap** at the default value (0.5) with an "Optimal" guide mark.
+- **System**: Merged all bridge consoles (Grok & Edge TTS) into the **single main window** using PowerShell background processes in `start.bat`.
+- **System**: Added a **3-second warmup delay** in `start.bat` to prevent "Connection Refused" errors when the browser launches before the servers are ready.
+- **Diagnostics**: Enhanced `diagnosePuterModels()` to specifically test S-Tier models (DeepSeek R1, GPT-4o-Mini, Claude Haiku).
+
+### Fixed
+
+- **System**: Cleaned up startup sequence and added auto-cleanup of background Python processes on exit.
+- **UI**: Added dark theme styling for modal dropdowns and search inputs to prevent light-theme clash.
+- **Logic**: AI Fallback now specifically detects Puter's `"no fallback model available"` and `"overloaded"` errors to instantly cycle to the next candidate.
+
+## [v2.3.9] - "Signal Clarity" - 2026-02-17
+
+### Fixed
+
+- **Critical**: `setupInputListeners` crashed on missing shortcut buttons (`btn-shortcut-image/video/ocr`), causing `Listeners setup failed` error on every startup. Added null guards.
+- **AI Fallback**: Puter's `"no fallback model available"` error wasn't triggering our fallback chain because `error.error` (Puter's plain-object format) wasn't being extracted — only `error.message` was checked.
+- **Fallback Chain**: Updated `FREE_FALLBACK_CHAIN` with proper `openrouter:` prefixed model IDs. Bare IDs like `google/gemma-2-9b-it:free` don't route correctly through Puter.
+- **Health Check**: Removed auto-switch behavior from model health check — it was recursively trying every model on selection and causing cascading failures. Now just logs a warning; actual chat call handles fallback.
+- **Debug Server**: Increased log truncation from 100→500 chars so error messages are fully visible.
+
+## [v2.3.8] - "Clean Stream" - 2026-02-17
+
+### Added
+
+- **Grok**: Added Grok 4.20 (Beta) to model selection — available in both the sidebar model picker and the Python API bridge.
+
+### Fixed
+
+- **Grok**: Stripped raw `xai:tool_usage_card` / `xai:tool_name` / `xai:tool_args` metadata from Grok API responses. These internal tool invocation markers (web search, code execution, etc.) were leaking into the chat as visible text. Fix applied to all three response paths: streaming, non-streaming new conversation, and non-streaming reply.
+
 ## [v2.3.7] - "Fallback Modal" - 2026-02-17
 
 ### Added
@@ -9,7 +50,11 @@ All notable changes to the "GravityChat" project will be documented in this file
 - **UI**: Added a dedicated info modal to notify users when a model fallback occurs, replacing the transient toast notification.
 - **UX**: Implemented instant model health check on selection. If the selected model is offline, the app immediately switches to a working fallback and notifies the user *before* they type a message.
 - **Fix**: Resolved an issue where the "Stop" button would not appear during audio playback for Grok model responses.
-- **Feat**: Enabled true streaming for Grok! Responses now appear instantly token-by-token instead of waiting for the full message. (Requires restarting the local Grok server).
+- **Grok**: Upgrade to v2.3.7 with full streaming support (requires `api_server.py` restart).
+- **System**: Fixed Grok streaming stalling when app is minimized or in background tab.
+- **System**: Added automatic self-healing for 'moderation loop' errors (auto-wipes corrupted state).
+- **Voice**: Fixed "Stop" button killing the microphone in continuous voice mode. It now properly restarts listening.
+- **UI**: Added logic to visually disable/fade the temperature slider when using Grok models (since they don't support it).
 
 ### Fixed
 

@@ -35,15 +35,41 @@ export function renderSettings() {
             </label>
             <div class="mb-3">
                 <label class="text-xs text-gray-400 mb-1 block">TTS Voice</label>
-                <select id="voice-selector" class="select select-bordered select-sm w-full"></select>
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 glass-card p-2 text-xs truncate" id="current-voice-display">${AppState.selectedVoice || 'Joanna'}</div>
+                    <button id="btn-browse-voices" class="btn btn-sm btn-outline border-cyan-500/30 text-cyan-400 text-xs flex-shrink-0" title="Browse all available voices">
+                        🎤 Browse
+                    </button>
+                </div>
+                <select id="voice-selector" class="hidden"></select>
             </div>
         </div>
         <div class="divider"></div>
         <div>
             <label class="text-sm font-semibold mb-2 block">Chat Settings</label>
-            <div class="mb-3">
-                <label class="text-xs text-gray-400 mb-1 block">Temperature: <span id="temp-value">${AppState.temperature}</span></label>
-                <input type="range" id="temperature-slider" min="0" max="2" step="0.1" value="${AppState.temperature}" class="range range-xs range-primary" />
+            <div id="temperature-container" class="mb-5 transition-opacity duration-300 relative">
+                <div class="flex justify-between items-center mb-1">
+                    <label class="text-xs text-gray-400 block">Temperature</label>
+                    <span id="temp-value" class="text-[10px] font-mono text-cyan-400 bg-cyan-400/10 px-1.5 rounded">${AppState.temperature.toFixed(1)}</span>
+                </div>
+                
+                <div class="relative pt-4 pb-2">
+                    <input type="range" id="temperature-slider" min="0" max="2" step="0.1" value="${AppState.temperature}" list="temp-markers" class="custom-range w-full" />
+                    
+                    <!-- Default Snap Marker -->
+                    <div class="absolute top-0" style="left: 25%; transform: translateX(-50%);">
+                        <div class="flex flex-col items-center">
+                            <span class="text-[9px] font-bold text-cyan-500/80 leading-none">0.5</span>
+                            <span class="text-[7px] text-cyan-500/40 uppercase tracking-tighter mt-0.5">(Optimal)</span>
+                            <div class="w-[1px] h-2 bg-cyan-500/30 mt-0.5"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between w-full px-0.5 mt-[-2px]">
+                    <span class="text-[8px] text-gray-600">PRECISE</span>
+                    <span class="text-[8px] text-gray-600">CREATIVE</span>
+                </div>
             </div>
             <div>
                 <label class="text-xs text-gray-400 mb-1 block">Max Tokens</label>
@@ -65,6 +91,22 @@ export function renderSettings() {
     `;
 
     setupSettingsListeners();
+    updateTemperatureVisibility();
+}
+
+export function updateTemperatureVisibility() {
+    const container = document.getElementById('temperature-container');
+    if (!container) return;
+
+    const isGrok = AppState.currentModel.toLowerCase().includes('grok');
+    
+    if (isGrok) {
+        container.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
+        container.title = "Not supported by Grok models";
+    } else {
+        container.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+        container.title = "";
+    }
 }
 
 function setupSettingsListeners() {
@@ -110,8 +152,16 @@ function setupSettingsListeners() {
         saveStateToKV();
     };
     document.getElementById('temperature-slider').oninput = (e) => {
-        AppState.temperature = parseFloat(e.target.value);
-        updateElementText('temp-value', e.target.value);
+        let val = parseFloat(e.target.value);
+        
+        // Magnetic snap to 0.5 (Default)
+        if (val >= 0.4 && val <= 0.6) {
+            val = 0.5;
+            e.target.value = 0.5;
+        }
+        
+        AppState.temperature = val;
+        updateElementText('temp-value', val.toFixed(1));
     };
     document.getElementById('temperature-slider').onchange = () => saveStateToKV();
     document.getElementById('max-tokens-input').onchange = (e) => {
@@ -121,4 +171,5 @@ function setupSettingsListeners() {
     
     document.getElementById('btn-export-chat').onclick = () => window.gravityChat.exportChat();
     document.getElementById('btn-clear-chat').onclick = () => window.gravityChat.clearChat();
+    document.getElementById('btn-browse-voices').onclick = () => window.gravityChat.openVoiceBrowser();
 }

@@ -1,6 +1,7 @@
 import { AppState } from '../state.js';
 import { renderMessage, createAIMessageElement } from '../ui/chat.js';
 import { renderMarkdown } from '../utils/markdown.js';
+import { stopSpeech } from './voice.js';
 import { scrollToBottom } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
 import { getProjectContext } from './memory.js';
@@ -11,22 +12,78 @@ import { saveStateToKV } from './storage.js';
 import { syncCurrentSession } from '../ui/sidebar/sessions.js';
 
 const FREE_FALLBACK_CHAIN = [
-    'google/gemma-2-9b-it:free', 'google/gemma-2-9b-it',
-    'meta-llama/llama-3.1-8b-instruct:free', 'meta-llama/llama-3.1-8b-instruct',
-    'mistralai/mistral-7b-instruct:free', 'mistralai/mistral-7b-instruct',
-    'microsoft/phi-3-medium-128k-instruct:free', 'microsoft/phi-3-medium-128k-instruct',
-    'gpt-4o-mini',
-    'gpt-3.5-turbo'
+    'gpt-4o-mini',          // Direct Puter model — very reliable
+    'gpt-5-nano',           // Puter's default model
+    'claude-3-5-haiku-20241022',
+    'openrouter:google/gemma-2-9b-it:free',
+    'openrouter:meta-llama/llama-3.1-8b-instruct:free',
+    'openrouter:mistralai/mistral-7b-instruct:free',
+    'openrouter:microsoft/phi-3-medium-128k-instruct:free',
 ];
 
 const MAX_CONTEXT_MESSAGES = 20;
+
+// Stop generation & voice
+export function stopGeneration() {
+    AppState._abortStream = true;
+    stopSpeech();
+    console.info('[AI] Stop generation requested');
+}
+
+// Diagnostic: Test which Puter models actually work
+export async function diagnosePuterModels() {
+    const testModels = [
+        { label: 'GPT-4o-Mini (S)',     opts: { model: 'gpt-4o-mini' } },
+        { label: 'DeepSeek R1 (S)',     opts: { model: 'openrouter:deepseek/deepseek-r1-0528:free' } },
+        { label: 'Claude 3.5 Haiku (S)', opts: { model: 'claude-3-5-haiku-20241022' } },
+        { label: 'Gemini 2.0 Flash (S)', opts: { model: 'google/gemini-2.0-flash-exp:free' } },
+        { label: 'Llama 3.3 70B (A)',    opts: { model: 'meta-llama/llama-3.3-70b-instruct:free' } },
+    ];
+
+    console.warn('═══ PUTER MODEL DIAGNOSTIC START ═══');
+    const results = [];
+
+    for (const test of testModels) {
+        try {
+            const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout (8s)')), 8000));
+            const res = await Promise.race([
+                puter.ai.chat('Say "ok" in one word.', { ...test.opts, max_tokens: 5 }),
+                timeout
+            ]);
+            const text = typeof res === 'string' ? res : (res?.message?.content || res?.text || JSON.stringify(res).substring(0, 100));
+            console.info(`  ✅ ${test.label}: "${text}"`);
+            results.push({ model: test.label, status: 'OK', response: text });
+        } catch (err) {
+            const msg = err?.error || err?.message || JSON.stringify(err);
+            console.error(`  ❌ ${test.label}: ${msg}`);
+            results.push({ model: test.label, status: 'FAIL', error: msg });
+        }
+    }
+
+    const passed = results.filter(r => r.status === 'OK').length;
+    console.warn(`═══ DIAGNOSTIC DONE: ${passed}/${results.length} passed ═══`);
+    console.table(results);
+    return results;
+}
 
 // Send a message
 export async function sendMessage() {
     const input = document.getElementById('user-input');
     const content = input.value.trim();
     
-    if (!content || AppState.isStreaming) return;
+    if (!content) return;
+    
+    // Safety: Reset stuck streaming state (e.g. from previous crash)
+    if (AppState.isStreaming) {
+        const stuckMs = Date.now() - (AppState._streamStartedAt || 0);
+        if (stuckMs > 30000) {
+            console.warn(`[AI] Force-resetting stuck isStreaming (stuck for ${(stuckMs/1000).toFixed(0)}s)`);
+            AppState.isStreaming = false;
+        } else {
+            console.warn('[AI] sendMessage blocked: isStreaming is true');
+            return;
+        }
+    }
     
     // Attachments
     const attachments = [...AppState.attachedFiles];
@@ -46,6 +103,7 @@ export async function sendMessage() {
     
     // AI Thinking
     AppState.isStreaming = true;
+    AppState._streamStartedAt = Date.now();
     const aiMessageElement = createAIMessageElement();
     
     try {
@@ -151,21 +209,28 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             aiMessageElement.innerHTML = '<span class="loading loading-dots loading-sm"></span>';
             // Grok uses stateful conversation ID on backend, so we pass the latest prompt
             const lastUserMsg = AppState.messages[AppState.messages.length - 1];
-            // Pass true for streaming
-            response = await askGrok(lastUserMsg.content, currentModel, true);
+            // Pass true for streaming and current temperature
+            response = await askGrok(lastUserMsg.content, currentModel, true, AppState.temperature);
         } else {
             // Standard Puter AI (Stateless, sends history)
             const useDefaultTemp = currentModel.includes('gpt-5');
+            console.info(`[AI] Calling puter.ai.chat with model=${currentModel}, msgs=${messagesToSend.length}, temp=${useDefaultTemp ? 1 : AppState.temperature}`);
             response = await puter.ai.chat(messagesToSend, {
                 model: currentModel,
                 stream: true,
                 temperature: useDefaultTemp ? 1 : AppState.temperature,
                 max_tokens: AppState.maxTokens,
             });
+            console.info(`[AI] puter.ai.chat returned response type: ${typeof response}`);
         }
         
         // Unified Streaming Loop
+        AppState._abortStream = false;
         for await (const chunk of response) {
+            if (AppState._abortStream) {
+                console.info(`[AI] Stream aborted by user after ${chunkCount} chunks`);
+                break;
+            }
             if (chunk.text) {
                 fullText += chunk.text;
                 chunkCount++;
@@ -173,7 +238,6 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
                 // Add to speech buffer
                 if (AppState.autoSpeak) {
                     speechBuffer += chunk.text;
-                    // Check for sentence endings
                     const sentenceMatch = speechBuffer.match(/([.!?\n])\s+/);
                     if (sentenceMatch) {
                         const index = sentenceMatch.index + sentenceMatch[0].length;
@@ -183,11 +247,22 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
                     }
                 }
                 
-                // PERFORMANCE TWEAK: Only update DOM every 3 chunks during streaming
-                // This drastically reduces layout thrashing without losing "fluidity"
-                if (chunkCount % 3 === 0) {
-                    aiMessageElement.innerHTML = renderMarkdown(fullText, true) + '<span class="streaming-cursor"></span>';
-                    scrollToBottom('chat-area');
+                if (!window.updatePending) {
+                    window.updatePending = true;
+                    requestAnimationFrame(() => {
+                        aiMessageElement.innerHTML = renderMarkdown(fullText, true) + '<span class="streaming-cursor"></span>';
+                        // Re-add stop button (innerHTML wipes it)
+                        if (AppState.isStreaming && !AppState._abortStream) {
+                            const btn = document.createElement('button');
+                            btn.className = 'stop-gen-btn';
+                            btn.title = 'Stop generating';
+                            btn.onclick = () => window.gravityChat.stopGeneration();
+                            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+                            aiMessageElement.appendChild(btn);
+                        }
+                        scrollToBottom('chat-area');
+                        window.updatePending = false;
+                    });
                 }
             }
         }
@@ -197,7 +272,22 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             queueSpeech(speechBuffer, aiMessageElement);
         }
         
+        // Render final content (wipes everything)
         aiMessageElement.innerHTML = renderMarkdown(fullText, false);
+        
+        // Re-add stop button if still speaking
+        if (AppState.isSpeakingAudio && !AppState._abortStream) {
+            const btn = document.createElement('button');
+            btn.className = 'stop-gen-btn';
+            btn.title = 'Stop voice playback';
+            btn.onclick = () => window.gravityChat.stopGeneration();
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+            aiMessageElement.appendChild(btn);
+        }
+
+        if (AppState._abortStream) {
+            aiMessageElement.innerHTML += '<div class="text-xs text-amber-400 mt-2 italic">⏹ Generation stopped</div>';
+        }
 
         // Only append to history if we actually got a response
         if (fullText.trim()) {
@@ -222,7 +312,9 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
         }
         
         // Check for specific error types or message content
-        const errorMsg = (error.message || JSON.stringify(error)).toLowerCase();
+        // Puter returns errors as {success: false, error: "..."} (not Error instances)
+        const rawMsg = error.message || error.error || JSON.stringify(error);
+        const errorMsg = rawMsg.toLowerCase();
         
         const isFallbackCandidate = 
             errorMsg.includes('credit') || 
@@ -231,7 +323,9 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             errorMsg.includes('unavailable') ||
             errorMsg.includes('rate_limit') ||
             errorMsg.includes('model_not_found') ||
-            errorMsg.includes('not found');
+            errorMsg.includes('not found') ||
+            errorMsg.includes('no fallback') ||
+            errorMsg.includes('overloaded');
 
         if (isFallbackCandidate) {
             
@@ -247,23 +341,23 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             }
 
             // Standard Fallback Logic
-            // Create a robust candidate list:
-            // 1. Dynamic free models from Puter (most reliable)
-            // 2. Hardcoded fallback chain (if dynamic fetch failed)
             let candidates = (AppState.freeModels || []).map(m => m.id);
             
-            // If dynamic list is empty or exhausted, append hardcoded chain as backup
             if (candidates.length === 0) candidates = FREE_FALLBACK_CHAIN;
-            else candidates = [...new Set([...candidates, ...FREE_FALLBACK_CHAIN])]; // Merge unique
+            else candidates = [...new Set([...candidates, ...FREE_FALLBACK_CHAIN])];
+            
+            console.warn(`[AI Fallback] Attempted: [${attemptedModels.join(', ')}] | Candidates available: ${candidates.length}`);
             
             const nextModel = candidates.find(id => !attemptedModels.includes(id));
             
             if (nextModel) {
-                // showToast(`Credits low/Error, trying free model: ${nextModel}`, 'info');
-                showInfoModal('Model Switch', `The selected model failed to respond. Automatically switched to temporary free model: ${nextModel}`);
+                console.warn(`[AI Fallback] Switching to: ${nextModel}`);
+                showInfoModal('Model Switch', `The selected model failed to respond. Automatically switched to: ${nextModel}`);
                 AppState.currentModel = nextModel;
                 document.dispatchEvent(new CustomEvent('updateModelDisplay'));
                 return await executeChatWithFallback(aiMessageElement, attemptedModels);
+            } else {
+                console.error('[AI Fallback] All candidates exhausted!');
             }
         }
         throw error;

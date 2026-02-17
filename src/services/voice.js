@@ -18,7 +18,6 @@ async function waitForAIIdle(timeout = 5000) {
 
 let currentAudio = null; // Track active Cloud TTS
 let speechQueue = [];
-let isSpeakingAudio = false;
 let activeSpeakingBubble = null; // Track which bubble is currently speaking
 let activeAudioContext = null; // Track AudioContext to prevent leaks
 let statusTimer = null; // Track UI timeout
@@ -77,12 +76,19 @@ export async function queueSpeech(text, bubble) {
     }
     
     speechQueue.push({ text, bubble });
-    if (!isSpeakingAudio) processSpeechQueue();
+    if (!AppState.isSpeakingAudio) processSpeechQueue();
 }
 
 async function processSpeechQueue() {
     if (speechQueue.length === 0) {
-        isSpeakingAudio = false;
+        AppState.isSpeakingAudio = false;
+        
+        // Remove stop button from bubble when audio ends
+        if (activeSpeakingBubble) {
+            const btn = activeSpeakingBubble.querySelector('.stop-gen-btn');
+            if (btn) btn.remove();
+        }
+        
         activeSpeakingBubble = null;
         setSendButtonSpeaking(false);
         // Resume recording if in voice session
@@ -94,7 +100,7 @@ async function processSpeechQueue() {
     }
 
     // Stop recording BEFORE starting to speak (only on first chunk)
-    if (!isSpeakingAudio) {
+    if (!AppState.isSpeakingAudio) {
         if (AppState.isRecording) {
             console.log('🔇 Stopping mic before speech...');
             stopRecording();
@@ -104,8 +110,22 @@ async function processSpeechQueue() {
         }
     }
     
-    isSpeakingAudio = true;
+    AppState.isSpeakingAudio = true;
     const { text, bubble } = speechQueue.shift();
+    
+    // Ensure stop button is visible on bubble while speaking
+    if (bubble && !bubble.querySelector('.stop-gen-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'stop-gen-btn';
+        btn.title = 'Stop voice playback';
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            window.gravityChat.stopGeneration();
+        };
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+        bubble.appendChild(btn);
+    }
+    
     await speakText(text, bubble, true); // true = internal call
     processSpeechQueue();
 }
@@ -203,11 +223,37 @@ export async function speakText(text, bubble, isInternal = false) {
     try {
         console.log('Speaking text (cleaned)...');
         
-        // Check if user selected a native voice directly
+        const isEdgeForce = AppState.selectedVoice.startsWith('edge:');
         const isNativeForce = AppState.selectedVoice.startsWith('native:');
         
-        if (!isNativeForce) {
-            // Try Puter AI TTS first
+        // Edge TTS (local bridge)
+        if (isEdgeForce) {
+            try {
+                const edgeId = AppState.selectedVoice.substring(5);
+                console.log(`Attempting Edge TTS: ${edgeId}`);
+                const res = await fetch('http://127.0.0.1:8002/speak', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: cleanText, voice: edgeId }),
+                });
+                if (!res.ok) throw new Error(`Edge TTS HTTP ${res.status}`);
+                const blob = await res.blob();
+                currentAudio = new Audio(URL.createObjectURL(blob));
+                
+                return new Promise((resolve) => {
+                    currentAudio.onended = () => { cleanup(); resolve(); };
+                    currentAudio.onerror = (e) => { console.error('Edge audio error', e); cleanup(); resolve(); };
+                    currentAudio.play().catch(e => { console.error('Edge play error', e); cleanup(); resolve(); });
+                });
+            } catch (edgeError) {
+                console.warn('Edge TTS failed, falling back:', edgeError);
+                setVoiceStatus('EDGE TTS OFFLINE', 2000);
+                // Fall through to Polly/native
+            }
+        }
+        
+        if (!isNativeForce && !isEdgeForce) {
+            // Try Puter AI TTS (Polly)
             try {
                 console.log(`Attempting Cloud TTS: ${AppState.selectedVoice}`);
                 currentAudio = await puter.ai.txt2speech(cleanText, { language: 'en-US', voice: AppState.selectedVoice });
@@ -291,8 +337,21 @@ export function stopSpeech() {
     
     // Clear Queue
     speechQueue = [];
-    isSpeakingAudio = false;
+    AppState.isSpeakingAudio = false;
+    
+    // Remove stop button from current bubble
+    if (activeSpeakingBubble) {
+        const btn = activeSpeakingBubble.querySelector('.stop-gen-btn');
+        if (btn) btn.remove();
+    }
+    
     activeSpeakingBubble = null;
+
+    // Resume recording if in voice session (Fix: Manual stop shouldn't kill hands-free mode)
+    if (AppState.isVoiceSession && !AppState.isRecording) {
+        setVoiceStatus('RESUMING MIC...', 1000);
+        setTimeout(() => startRecording(), 500);
+    }
 }
 
 // Start recording audio (with VAD option)
@@ -418,7 +477,7 @@ async function transcribeAudio(audioBlob) {
             // Check for semantic commands (e.g. "Computer, switch theme...")
             const isCommand = await processSemanticCommand(text);
             if (isCommand) {
-                if (AppState.isVoiceSession && !isSpeakingAudio) setTimeout(() => startRecording(), 1000);
+                if (AppState.isVoiceSession && !AppState.isSpeakingAudio) setTimeout(() => startRecording(), 1000);
                 return;
             }
 
@@ -440,12 +499,12 @@ async function transcribeAudio(audioBlob) {
             setVoiceStatus('NO SPEECH', 2000);
         }
         
-        if (AppState.isVoiceSession && !isSpeakingAudio) setTimeout(() => startRecording(), 200); // optimized restart
+        if (AppState.isVoiceSession && !AppState.isSpeakingAudio) setTimeout(() => startRecording(), 200); // optimized restart
         
     } catch (error) {
         console.error('Transcription error:', error);
         setVoiceStatus('ERROR', 2000);
-        if (AppState.isVoiceSession && !isSpeakingAudio) setTimeout(() => startRecording(), 1000);
+        if (AppState.isVoiceSession && !AppState.isSpeakingAudio) setTimeout(() => startRecording(), 1000);
     }
 }
 

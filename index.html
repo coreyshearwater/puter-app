@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GravityChat - Free AI Workstation</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>GravityChat v2.4.0 - Free AI Workstation</title>
 
     <!-- Theme Bootstrapper: Applied synchronously to <html> to prevent flash -->
     <script>
@@ -25,7 +28,7 @@
     <script src="https://js.puter.com/v2/"></script>
     
     <!-- Remote Debugger (Restored) -->
-    <script src="src/utils/logger.js"></script>
+    <script src="src/utils/logger.js?v=2.4.0"></script>
     
     <!-- Tailwind CSS + daisyUI -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -38,7 +41,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/main.css?v=2.4.0">
 </head>
 <body class="bg-void">
     <!-- Loading overlay: shown instantly, removed after init completes -->
@@ -111,8 +114,11 @@
                     </span>
                 </button>
                 <div id="tab-models" class="gchat-tab-panel hidden">
-                    <div class="px-2 mb-3 mt-2">
-                        <input type="text" id="model-search" placeholder="Search models..." class="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-cyan-500 outline-none">
+                    <div class="flex items-center gap-2 px-2 mb-3 mt-2">
+                        <input type="text" id="model-search" placeholder="Search models..." class="flex-1 bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-cyan-500 outline-none">
+                        <button id="btn-refresh-models" class="btn btn-ghost btn-circle btn-xs btn-icon flex-shrink-0 text-gray-400 hover:text-cyan-400 transition-colors" title="Refresh models list from Puter" aria-label="Refresh models">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
                     </div>
                     <div id="model-list" class="space-y-2">
                         <!-- Models load here -->
@@ -282,7 +288,7 @@
 
     <!-- Main Module -->
     <!-- Main Module -->
-    <script type="module" src="src/main.js"></script>
+    <script type="module" src="src/main.js?v=2.4.0"></script>
 
     <!-- Media Lab Modal (Static Shell) -->
     <div id="media-lab-modal" class="fixed inset-0 z-[999] items-center justify-center p-4 bg-black/60 backdrop-blur-md" title="Close Media Lab" onclick="if(event.target === this) window.gravityChat.closeMediaLab()">

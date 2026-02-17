@@ -33,7 +33,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 with open(LOG_FILE, "a", encoding="utf-8") as f:
                     f.write(log_entry)
                 
-                print(f"Captured {level}: {msg[:100]}...") # Print to console too
+                print(f"Captured {level}: {msg[:500]}...") # Print to console too
                 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')

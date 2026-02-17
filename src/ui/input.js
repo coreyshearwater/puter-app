@@ -56,19 +56,26 @@ export function setupInputListeners() {
         e.target.value = '';
     };
 
-    // Shortcut Buttons
-    document.getElementById('btn-shortcut-image').onclick = () => {
-        userInput.value = '/image ' + userInput.value.replace(/^\/image\s*|^\/video\s*/i, '');
-        userInput.focus();
-    };
-    document.getElementById('btn-shortcut-video').onclick = () => {
-        userInput.value = '/video ' + userInput.value.replace(/^\/image\s*|^\/video\s*/i, '');
-        userInput.focus();
-    };
+    // Shortcut Buttons (may not exist in all UI layouts)
+    const imgBtn = document.getElementById('btn-shortcut-image');
+    if (imgBtn) {
+        imgBtn.onclick = () => {
+            userInput.value = '/image ' + userInput.value.replace(/^\/image\s*|^\/video\s*/i, '');
+            userInput.focus();
+        };
+    }
+    const vidBtn = document.getElementById('btn-shortcut-video');
+    if (vidBtn) {
+        vidBtn.onclick = () => {
+            userInput.value = '/video ' + userInput.value.replace(/^\/image\s*|^\/video\s*/i, '');
+            userInput.focus();
+        };
+    }
     
     // OCR Logic
     const ocrInput = document.getElementById('ocr-input');
-    document.getElementById('btn-shortcut-ocr').onclick = () => ocrInput.click();
+    const ocrBtn = document.getElementById('btn-shortcut-ocr');
+    if (ocrBtn && ocrInput) ocrBtn.onclick = () => ocrInput.click();
     ocrInput.onchange = async (e) => {
         if (e.target.files.length > 0) {
             const { performOCR } = await import('../services/ai.js');

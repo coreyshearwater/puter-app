@@ -244,6 +244,7 @@ export const AppState = {
     autoSpeak: false,
     selectedVoice: 'Joanna',
     isRecording: false,
+    isSpeakingAudio: false,
     isVoiceSession: false,
     mediaRecorder: null,
     audioChunks: [],

@@ -1,7 +1,7 @@
 @echo off
 title GravityChat Server
 echo ==========================================
-echo       --- Starting GravityChat v2.3.1 ---
+echo       --- Starting GravityChat v2.4.0 ---
 echo ==========================================
 echo.
 
@@ -34,34 +34,56 @@ if not defined CHROME_PATH (
     exit /b 1
 )
 
-echo [1/3] Launching App Mode...
+echo [1/4] Starting Grok API Bridge...
+if exist "Grok-Api-main\venv\Scripts\python.exe" (
+    powershell -Command "Start-Process 'Grok-Api-main\venv\Scripts\python.exe' -ArgumentList 'Grok-Api-main\api_server.py' -NoNewWindow"
+    echo       [OK] Grok Bridge starting in background...
+) else (
+    echo       [WARN] Grok venv not found.
+)
+
+echo [2/4] Starting Edge TTS Bridge...
+if exist "edge_tts_venv\Scripts\python.exe" (
+    powershell -Command "Start-Process 'edge_tts_venv\Scripts\python.exe' -ArgumentList 'edge_tts_server.py' -NoNewWindow"
+    echo       [OK] Edge TTS Bridge starting in background...
+) else (
+    echo       [WARN] Edge TTS venv not found.
+)
+
+echo [3/4] Starting local Debug server...
+if exist "debug_server.py" (
+    :: Run in background so we can continue the script to launch browser
+    start /b python debug_server.py
+    echo       [OK] Debug Server starting...
+) else (
+    echo       [WARN] debug_server.py not found.
+)
+
+echo.
+echo [4/4] Warming up engines (3s)...
+timeout /t 3 /nobreak >nul
+
 if defined CHROME_PATH (
-    echo       Found Chrome! Opening via Shortcut...
+    echo [HOT] Launching App Mode...
     
-    :: Create/Update shortcut first to ensure path/icon is correct
+    :: Create/Update shortcut
     powershell -ExecutionPolicy Bypass -File create_shortcut.ps1
     
-    :: Launch the shortcut
+    :: Launch
     start "" "GravityChat.lnk"
 )
 
-echo [2/3] Starting Grok API Bridge...
-if exist "Grok-Api-main\venv\Scripts\python.exe" (
-    if exist "Grok-Api-main\api_server.py" (
-        start /min "Grok API" cmd /c "cd Grok-Api-main && .\venv\Scripts\python api_server.py"
-    ) else (
-        echo       [WARN] api_server.py not found in Grok-Api-main\
-    )
-) else (
-    echo       [WARN] Grok venv not found. Grok models will be unavailable.
-)
-
-echo [3/3] Starting local Debug server...
-echo       Do not close this window while using the app!
 echo.
-if exist "debug_server.py" (
-    python debug_server.py
-) else (
-    echo       [WARN] debug_server.py not found. Debug logging unavailable.
-)
+echo ======================================================
+echo   READY! All logs are streaming below.
+echo   Do not close this window while using the app.
+echo ======================================================
+echo.
+
+:: Keep window open and show logs
+:: This also allows the user to press a key to clean up and exit
 pause
+
+:: Cleanup background bridges on exit
+echo [System] Shutting down bridges...
+taskkill /F /IM python.exe >nul 2>&1
