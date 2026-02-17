@@ -231,7 +231,12 @@ export const AppState = {
     currentModel: 'z-ai/glm-4.5-air:free',
     isStreaming: false,
     premiumEnabled: false,
-    theme: 'void',
+    theme: (function() {
+        try {
+            const s = JSON.parse(localStorage.getItem('gravitychat_settings') || '{}');
+            return s.theme || 'void';
+        } catch (e) { return 'void'; }
+    })(),
     allModels: [],
     freeModels: [],
     
@@ -242,7 +247,6 @@ export const AppState = {
     isVoiceSession: false,
     mediaRecorder: null,
     audioChunks: [],
-    audioStream: null,
     
     // Chat settings
     temperature: 0.5,

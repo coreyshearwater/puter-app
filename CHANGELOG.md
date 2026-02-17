@@ -2,12 +2,30 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.3.0] - "Voice Revolution" - 2026-02-17
+
+- **Added**: **Streaming TTS** — AI now speaks sentences in real-time as they are generated, drastically reducing perceived latency.
+- **Added**: **Half-Duplex Voice Mode** — Microphone automatically stops listening during AI speech playback to prevent feedback loops.
+- **Added**: **Intelligent Voice Queuing** — Voice messages now wait for background tasks (like persona switching) to complete before auto-sending.
+- **Added**: **Hands-Free AI** — Voice inputs are automatically sent after transcription without manual confirmation.
+- **Improved**: **Voice Latency** — Reduced silence detection time from 1.5s to 0.7s for snappier conversation flow.
+- **Improved**: **Stop Button UX** — Voice stop button now appears instantly when speech begins and persists on the correct message bubble.
+- **Fixed**: **GPT-5 Temperature Compatibility** — GPT-5 models now correctly use temperature=1 (required by the model).
+- **Fixed**: **Oracular Persona Switching** — Consolidated reset commands to prevent instruction bleed-over when switching personas.
+- **Fixed**: **Session Deletion UI Sync** — Deleting the last chat session now correctly updates the sidebar.
+- **UI Polish**: Moved voice stop button to top-right corner of message bubbles for better visibility.
+
 ## [v2.2.2] - "Persona Pro Max" - 2026-02-17
 
 - **Added**: **Unlimited Personas** — Completely refactored the persona system to support unlimited user-defined personalities.
 - **Added**: **Management UI** — Added "Edit" and "Delete" controls that manifest on hover for all persona cards.
 - **Added**: **Dynamic Coloring** — New personas automatically receive unique high-contrast colors and neon glow effects.
 - **Added**: **Oracular Auto-Bridge** — Switching to the Oracular persona now triggers an automatic hidden "Engage Oracle Mode" command.
+- **UI Cleanup**: Removed the "Welcome to GravityChat" splash screen for a cleaner, more focused workspace.
+- **Improved UX**: The application window now starts **Maximized** by default for a smoother desktop experience.
+- **Security & Safety**: Unified all destructive actions (Chat, Session, Persona deletion, and Reset) to use custom **Neon Confirm Modals** for a premium, consistent aesthetic.
+- **Theme Overhaul**: Added premium dark themes: **Midnight (Sleek Onyx)**, **Cyberpunk**, and **Deep Sea**, ensuring perfect color harmony and professional dark-mode UI.
+- **UI/UX Fix**: Added a constrained **max-height and scrollbar** to sidebar panels (Settings, Models, Personas) to ensure all options are accessible even in smaller windows.
 - **Changed**: **UI Nomenclature** — Refined "Default" state naming (Sidebar: "No persona" / Header: "DEFAULT") for better UX clarity.
 
 ## [v2.2.1] - "Hygiene & Accessibility" - 2026-02-17

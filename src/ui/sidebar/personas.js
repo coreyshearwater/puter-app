@@ -2,7 +2,7 @@ import { AppState, DEFAULT_PERSONAS } from '../../state.js';
 import { saveStateToKV } from '../../services/storage.js';
 import { showToast } from '../../utils/toast.js';
 import { updatePersonaHeader } from '../oracular.js';
-import { showCustomPersonaModal } from '../../utils/modals.js';
+import { showCustomPersonaModal, showConfirmModal } from '../../utils/modals.js';
 
 export function initializePersonas() {
     // Ensure all default personas are present
@@ -14,11 +14,12 @@ export function initializePersonas() {
         }
     });
 
-    // Force Default (null) if no valid persona is saved or if we're in a fresh state
-    if (!AppState.activePersona) {
+    // Final validation & Sync
+    if (!AppState.activePersona || !AppState.personas.find(p => p.id === AppState.activePersona.id)) {
+        console.log('⚡ Persona Logic: Reverting to Default');
         AppState.activePersona = null;
-    } else if (!AppState.personas.some(p => p.id === AppState.activePersona.id)) {
-        AppState.activePersona = null;
+    } else {
+        console.log(`⚡ Persona Logic: Active = ${AppState.activePersona.name}`);
     }
 
     renderPersonasList();
@@ -52,11 +53,11 @@ export function renderPersonasList() {
     // 1. Default Option (No Persona)
     const isDefaultActive = !AppState.activePersona;
     let html = `
-        <div class="glass-card p-3 cursor-pointer transition mb-2 ${isDefaultActive ? 'ring-2 ring-cyan-400' : 'hover:bg-white/5 opacity-70 hover:opacity-100'}"
+        <div class="glass-card p-2 cursor-pointer transition mb-2 ${isDefaultActive ? 'ring-2 ring-cyan-400' : 'hover:bg-white/5 opacity-70 hover:opacity-100'}"
              onclick="window.gravityChat.selectPersona(null)">
             <div class="flex items-center gap-2">
-                <div class="w-3 h-3 rounded-full" style="background: #94a3b8; box-shadow: 0 0 8px #94a3b880; border: 1px solid #ffffff20;"></div>
-                <span class="font-semibold text-sm ${isDefaultActive ? 'text-white' : 'text-gray-400'}">Default (No persona)</span>
+                <div class="w-2.5 h-2.5 rounded-full" style="background: #94a3b8; box-shadow: 0 0 8px #94a3b880; border: 1px solid #ffffff20;"></div>
+                <span class="font-semibold text-xs ${isDefaultActive ? 'text-white' : 'text-gray-400'}">Default (No persona)</span>
             </div>
         </div>
         <div class="h-px bg-white/10 my-2"></div>
@@ -67,12 +68,12 @@ export function renderPersonasList() {
         const isActive = AppState.activePersona?.id === persona.id;
         
         return `
-            <div class="glass-card p-3 cursor-pointer transition mb-2 group relative ${isActive ? 'ring-2 ring-cyan-400' : 'hover:bg-white/5'}" 
+            <div class="glass-card p-2 cursor-pointer transition mb-2 group relative ${isActive ? 'ring-2 ring-cyan-400' : 'hover:bg-white/5'}" 
                  onclick="window.gravityChat.selectPersona('${persona.id}')">
                 <div class="flex items-start justify-between">
                     <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-full" style="background: ${persona.color}; box-shadow: 0 0 10px ${persona.color};"></div>
-                        <span class="font-semibold text-sm text-gray-200">${persona.name}</span>
+                        <div class="w-2.5 h-2.5 rounded-full" style="background: ${persona.color}; box-shadow: 0 0 10px ${persona.color};"></div>
+                        <span class="font-semibold text-xs text-gray-200">${persona.name}</span>
                     </div>
                     
                     <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -91,40 +92,46 @@ export function renderPersonasList() {
 export function selectPersona(personaId) {
     // Handle "Default" selection (null)
     if (!personaId) {
+        let dc = 'Return to default assistance mode.';
+        if (AppState.activePersona?.id === 'oracular') {
+            dc = 'Disengage Oracular Function. Reset all operational frameworks. Return to default assistance mode. Clear all previous output formatting.';
+            AppState.oracularModes = {};
+        }
+
         AppState.activePersona = null;
         renderPersonasList();
         showToast('Persona cleared (Default)', 'info');
         updatePersonaHeader(); 
         saveStateToKV();
+        
+        // Notify AI with consolidated command
+        import('../../services/ai.js').then(m => m.sendHiddenMessage(dc));
         return;
     }
 
     const persona = AppState.personas.find(p => p.id === personaId);
     if (persona) {
+        let command = '';
+        
+        // Handle transition logic
+        if (AppState.activePersona?.id === 'oracular' && personaId !== 'oracular') {
+            // Forceful reset when leaving Oracular
+            command = `Disengage Oracular Function. Reset all operational frameworks. Persona "${persona.name}" engaged. Clear all previous output formatting.`;
+            AppState.oracularModes = {};
+        } else if (personaId === 'oracular') {
+            command = 'Engage Oracular Function';
+        } else {
+            command = `Persona "${persona.name}" engaged.`;
+        }
+
         AppState.activePersona = persona;
         renderPersonasList();
         showToast(`Persona: ${persona.name}`, 'success');
         updatePersonaHeader(); 
         saveStateToKV();
 
-        // ORACULAR AUTO-ENGAGEMENT
-        // If user selects Oracular and it's not already engaged, send activation command
-        if (personaId === 'oracular') {
-            const { sendHiddenMessage } = import('../../services/ai.js').then(m => {
-                const isAlreadyEngaged = AppState.oracularModes && AppState.oracularModes['Oracle'];
-                if (!isAlreadyEngaged) {
-                    // Update UI state first
-                    if (!AppState.oracularModes) AppState.oracularModes = {};
-                    AppState.oracularModes['Oracle'] = true;
-                    const { updateButtonsState } = import('../oracular.js').then(om => {
-                        om.updateButtonsState();
-                    });
-                    
-                    // Send the command user requested
-                    m.sendHiddenMessage('Engage Oracle Mode');
-                }
-            });
-        }
+        // Notify AI with a SINGLE consolidated command to avoid "System busy" race conditions
+        import('../../services/ai.js').then(m => m.sendHiddenMessage(command));
     }
 }
 
@@ -161,9 +168,15 @@ function generateUniqueColor() {
 }
 
 export function deletePersona(personaId) {
-    if (!confirm('Delete this persona?')) return;
-    AppState.personas = AppState.personas.filter(p => p.id !== personaId);
-    if (AppState.activePersona?.id === personaId) AppState.activePersona = null;
-    renderPersonasList();
-    saveStateToKV();
+    const persona = AppState.personas.find(p => p.id === personaId);
+    const name = persona ? persona.name : 'this persona';
+    
+    showConfirmModal('Delete Persona', `Are you sure you want to delete "${name}"? This action cannot be undone.`, () => {
+        AppState.personas = AppState.personas.filter(p => p.id !== personaId);
+        if (AppState.activePersona?.id === personaId) AppState.activePersona = null;
+        renderPersonasList();
+        updatePersonaHeader();
+        saveStateToKV();
+        showToast('Persona deleted', 'info');
+    });
 }

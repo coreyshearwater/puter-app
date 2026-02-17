@@ -1,6 +1,8 @@
 import { AppState } from '../../state.js';
 import { clearChat, renderMessage } from '../chat.js';
 import { saveStateToKV } from '../../services/storage.js';
+import { showConfirmModal } from '../../utils/modals.js';
+import { showToast } from '../../utils/toast.js';
 
 export function initializeSessions() {
     console.log('🔹 initializing Sessions...');
@@ -54,12 +56,7 @@ function renderCurrentSessionMessages() {
     if (container) container.innerHTML = '';
     
     if (AppState.messages.length === 0) {
-         // Show welcome (hacky reuse of clearChat ui logic via direct html)
-         container.innerHTML = `
-            <div class="glass-card p-4 mb-4 text-center">
-                <h2 class="text-xl font-bold mb-2">Welcome to GravityChat!</h2>
-                <p class="text-sm text-gray-400">Your personal AI workstation, forever free.</p>
-            </div>`;
+         container.innerHTML = '';
     } else {
         AppState.messages.forEach(msg => renderMessage(msg));
     }
@@ -134,34 +131,40 @@ export function switchSession(sessionId) {
 }
 
 export function deleteSession(sessionId) {
-    if (!confirm('Delete this chat?')) return;
+    const session = AppState.sessions.find(s => s.id === sessionId);
+    const sessionName = session ? session.name : 'this chat';
 
-    // specific logic: if it's the only session, just clear it
-    if (AppState.sessions.length <= 1) {
-        AppState.messages = [];
-        syncCurrentSession();
-        renderCurrentSessionMessages();
-        saveStateToKV();
-        return;
-    }
-
-    // Filter out
-    const idx = AppState.sessions.findIndex(s => s.id === sessionId);
-    if (idx === -1) return;
-
-    // If deleting active session, switch to another
-    if (sessionId === AppState.activeSessionId) {
-        // Try next, or prev
-        const nextSession = AppState.sessions[idx + 1] || AppState.sessions[idx - 1];
-        AppState.sessions.splice(idx, 1);
-        if (nextSession) {
-            switchSession(nextSession.id); // This will handle sync/render/save
+    showConfirmModal('Delete Chat', `Are you sure you want to delete "${sessionName}"? All messages in this thread will be permanently removed.`, () => {
+        // specific logic: if it's the only session, just clear it
+        if (AppState.sessions.length <= 1) {
+            AppState.messages = [];
+            syncCurrentSession();
+            renderCurrentSessionMessages();
+            renderSessionList(); // FIX: Re-render list to update name/time
+            saveStateToKV();
+            showToast('Chat cleared', 'info');
+            return;
         }
-    } else {
-        AppState.sessions.splice(idx, 1);
-        renderSessionList();
-        saveStateToKV();
-    }
+
+        // Filter out
+        const idx = AppState.sessions.findIndex(s => s.id === sessionId);
+        if (idx === -1) return;
+
+        // If deleting active session, switch to another
+        if (sessionId === AppState.activeSessionId) {
+            // Try next, or prev
+            const nextSession = AppState.sessions[idx + 1] || AppState.sessions[idx - 1];
+            AppState.sessions.splice(idx, 1);
+            if (nextSession) {
+                switchSession(nextSession.id); // This will handle sync/render/save
+            }
+        } else {
+            AppState.sessions.splice(idx, 1);
+            renderSessionList();
+            saveStateToKV();
+        }
+        showToast('Chat deleted', 'info');
+    });
 }
 
 // Helper to ensure AppState.messages is saved into the correct session object
@@ -181,6 +184,10 @@ export function syncCurrentSession() {
                      session.name = firstUser.content.substring(0, 20) + (firstUser.content.length > 20 ? '...' : '');
                 }
             }
+            session.timestamp = Date.now();
+        } else {
+            // Reset if empty
+            session.name = 'New Chat';
             session.timestamp = Date.now();
         }
     }

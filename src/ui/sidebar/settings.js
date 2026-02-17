@@ -14,9 +14,11 @@ export function renderSettings() {
             <div class="mb-3">
                 <label class="text-xs text-gray-400 mb-1 block">Mood Theme</label>
                 <select id="theme-selector" class="select select-bordered select-sm w-full">
-                    <option value="void" ${AppState.theme === 'void' ? 'selected' : ''}>Void (Classic)</option>
-                    <option value="toxic" ${AppState.theme === 'toxic' ? 'selected' : ''}>Toxic (Green)</option>
-                    <option value="overdrive" ${AppState.theme === 'overdrive' ? 'selected' : ''}>Overdrive (Bright)</option>
+                    <option value="void" ${AppState.theme === 'void' ? 'selected' : ''}>Void (Default)</option>
+                    <option value="toxic" ${AppState.theme === 'toxic' ? 'selected' : ''}>Toxic (Hacker)</option>
+                    <option value="cyberpunk" ${AppState.theme === 'cyberpunk' ? 'selected' : ''}>Cyberpunk (High-Vis)</option>
+                    <option value="deepsea" ${AppState.theme === 'deepsea' ? 'selected' : ''}>Deep Sea (Calm)</option>
+                    <option value="midnight" ${AppState.theme === 'midnight' ? 'selected' : ''}>Midnight (Sleek Onyx)</option>
                 </select>
             </div>
             <label class="flex items-center justify-between p-3 glass-card cursor-pointer">
@@ -51,10 +53,14 @@ export function renderSettings() {
         <div class="divider"></div>
         <div>
             <label class="text-sm font-semibold mb-2 block">Data</label>
-            <div class="grid grid-cols-2 gap-3 mt-2">
-                <button id="btn-export-chat" class="btn btn-sm btn-outline border-cyan-500/30 text-cyan-400 font-medium text-xs uppercase">Export</button>
-                <button id="btn-clear-chat" class="btn btn-sm btn-outline border-red-500/30 text-red-400 font-medium text-xs uppercase">Clear</button>
+            <div class="space-y-3 mt-2">
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-export-chat" class="btn btn-sm btn-outline border-cyan-500/30 text-cyan-400 font-medium text-xs uppercase" title="Save current chat as .md file">Export</button>
+                    <button id="btn-clear-chat" class="btn btn-sm btn-outline border-red-500/30 text-red-400 font-medium text-xs uppercase" title="Wipe current chat history">Clear</button>
+                </div>
+                <button id="btn-reset-defaults" class="btn btn-sm btn-outline border-orange-500/30 text-orange-400 font-medium text-xs uppercase w-full">Reboot Core (Reset)</button>
             </div>
+            <p class="text-[9px] text-gray-500 mt-3 text-center italic">"Export" saves chat as Markdown. "Clear" wipes history.</p>
         </div>
     `;
 
@@ -62,6 +68,35 @@ export function renderSettings() {
 }
 
 function setupSettingsListeners() {
+    document.getElementById('btn-reset-defaults').onclick = async () => {
+        const { showConfirmModal } = await import('../../utils/modals.js');
+        showConfirmModal(
+            'Reboot Core Settings', 
+            'This will restore all sliders, voices, themes, and models to their factory defaults. Persistant chats and personas will remain, but active state will reset. Continue?', 
+            () => {
+                // Reset to hardcoded defaults
+                AppState.theme = 'void';
+                AppState.allowEmojis = false;
+                AppState.autoSpeak = false;
+                AppState.selectedVoice = 'Joanna';
+                AppState.temperature = 0.5;
+                AppState.maxTokens = 4096;
+                AppState.currentModel = 'z-ai/glm-4.5-air:free';
+                AppState.premiumEnabled = false;
+
+                // Apply changes
+                applyTheme('void');
+                saveStateToKV();
+                renderSettings();
+                
+                // Update specific UI bits
+                import('./models.js').then(m => m.updateCurrentModelDisplay());
+                import('../../services/voice.js').then(v => v.loadVoices());
+                
+                showToast('Core settings restored to factory defaults', 'success');
+            }
+        );
+    };
     document.getElementById('theme-selector').onchange = (e) => applyTheme(e.target.value);
     
     document.getElementById('emoji-toggle').onchange = (e) => {

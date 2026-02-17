@@ -1,5 +1,10 @@
 :root {
-    /* Default / Void Theme */
+    /* Global tokens (not themeable or derived) */
+    --neon-green: #00ff9d;
+    --neon-orange: #ff9500;
+}
+
+.theme-void {
     --bg-void: #0a0a0f;
     --bg-dark: #12121a;
     --bg-elevated: #1a1a25;
@@ -10,13 +15,9 @@
     --glass-bg: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.1);
     --glow-shadow: rgba(0, 255, 247, 0.4);
-    
-    /* Global tokens (not themeable or derived) */
-    --neon-green: #00ff9d;
-    --neon-orange: #ff9500;
 }
 
-body.theme-toxic {
+.theme-toxic {
     --bg-void: #051005;
     --bg-dark: #0a1a0a;
     --bg-elevated: #102510;
@@ -25,21 +26,49 @@ body.theme-toxic {
     --glow-shadow: rgba(0, 255, 157, 0.4);
 }
 
-body.theme-overdrive {
-    --bg-void: #f4f4f5;
-    --bg-dark: #ffffff;
-    --bg-elevated: #e4e4e7;
-    --neon-primary: #ff9500;   /* Orange */
-    --neon-secondary: #ff5e00; /* Deep Orange */
-    --text-bright: #18181b;
-    --text-muted: #52525b;
-    --glass-bg: rgba(0, 0, 0, 0.05);
-    --glass-border: rgba(0, 0, 0, 0.1);
-    --glow-shadow: rgba(255, 149, 0, 0.4);
+.theme-cyberpunk {
+    --bg-void: #0d0118;
+    --bg-dark: #1a012e;
+    --bg-elevated: #24023d;
+    --neon-primary: #ff0055;   /* Hot Pink */
+    --neon-secondary: #00f3ff; /* Cyan Blue */
+    --text-bright: #ffffff;
+    --text-muted: #8e6fa1;
+    --glass-bg: rgba(255, 0, 85, 0.05);
+    --glass-border: rgba(0, 243, 255, 0.15);
+    --glow-shadow: rgba(255, 0, 85, 0.4);
 }
 
+.theme-deepsea {
+    --bg-void: #000814;
+    --bg-dark: #001d3d;
+    --bg-elevated: #003566;
+    --neon-primary: #ffc300;   /* Gold */
+    --neon-secondary: #0077b6; /* Ocean Blue */
+    --text-bright: #caf0f8;
+    --text-muted: #48cae4;
+    --glass-bg: rgba(202, 240, 248, 0.05);
+    --glass-border: rgba(255, 195, 0, 0.15);
+    --glow-shadow: rgba(255, 195, 0, 0.3);
+}
+
+.theme-midnight {
+    --bg-void: #020205;
+    --bg-dark: #05050a;
+    --bg-elevated: #0a0a0f;
+    --neon-primary: #3b82f6;   /* Electric Blue */
+    --neon-secondary: #2dd4bf; /* Emerald Teal */
+    --text-bright: #f8fafc;
+    --text-muted: #64748b;
+    --glass-bg: rgba(59, 130, 246, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glow-shadow: rgba(59, 130, 246, 0.3);
+}
+
+.bg-void { background: var(--bg-void); }
+
 body {
-    background: linear-gradient(135deg, var(--bg-void) 0%, #0d0d14 100%);
+    background: var(--bg-void);
     color: var(--text-bright);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-user-select: auto;
@@ -47,6 +76,17 @@ body {
     margin: 0;
     overflow: hidden;
     transition: background 0.5s ease, color 0.5s ease;
+}
+
+/* Global Focus Reset */
+*:focus {
+    outline: none !important;
+}
+
+textarea:focus, 
+input:focus {
+    border-color: transparent !important;
+    box-shadow: none !important;
 }
 
 #app-container {
@@ -80,12 +120,17 @@ body {
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
+    padding-bottom: 2rem;
 }
 
 #bottom-container {
     grid-column: 2;
-    display: flex;
-    flex-direction: column;
+    background: var(--bg-void);
+    border-top: 1px solid var(--glass-border);
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+    z-index: 50;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
 }
 
 /* Base utilities (fallback if Tailwind fails) */
@@ -94,13 +139,25 @@ body {
 .flex-col { flex-direction: column !important; }
 .flex-1 { flex: 1 1 0% !important; }
 
+.hidden-panel {
+    display: none !important;
+}
+
+.w-\[62\%\] { width: 62%; }
+
 #input-bar {
-    background: var(--bg-elevated);
-    border-top: 1px solid var(--glass-border);
-    padding: 1rem 1.5rem;
+    background: transparent;
+    border-top: none;
+    padding: 0.75rem 1rem;
     display: flex;
     gap: 0.75rem;
     align-items: center;
+    width: 100%;
+}
+
+#input-bar .glass-card:focus-within {
+    border-color: var(--neon-primary) !important;
+    box-shadow: 0 0 15px var(--glow-shadow) !important;
 }
 
 /* Glassmorphism */
@@ -136,11 +193,49 @@ body {
 @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Message Bubbles */
-.message-bubble { margin-bottom: 1rem; max-width: 85%; padding: 0.8rem 1.2rem; border-radius: 12px; }
+.message-bubble { margin-bottom: 1rem; max-width: 85%; padding: 0.8rem 1.2rem; border-radius: 12px; position: relative; }
 .message-user { margin-left: auto; background: linear-gradient(135deg, var(--neon-primary), var(--neon-secondary)); color: #000; }
-.message-ai { background: var(--glass-bg); border: 1px solid var(--glass-border); }
+.message-ai { background: var(--glass-bg); border: 1px solid var(--glass-border); padding-top: 2rem; } /* Padded top for button */
 .streaming-cursor::after { content: '▊'; animation: blink 1s infinite; color: var(--neon-primary); }
 @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+/* Voice Stop Button */
+.btn-stop-voice {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    color: var(--neon-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.btn-stop-voice:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+    border-color: var(--neon-primary);
+    box-shadow: 0 0 10px var(--glow-shadow);
+}
+
+.btn-stop-voice.speaking {
+    animation: pulse-cyan 2s infinite;
+}
+
+@keyframes pulse-cyan {
+    0% { box-shadow: 0 0 0 0 rgba(0, 255, 247, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(0, 255, 247, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 247, 0); }
+}
 
 /* Nav Tabs */
 .nav-tab {
@@ -174,9 +269,13 @@ body {
 
 .gchat-tab-panel {
     border-top: none;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
     animation: slideInAccordion 0.3s ease-out;
+    box-sizing: border-box;
 }
 
 @keyframes slideInAccordion {
@@ -249,4 +348,9 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Modal States */
+#media-lab-modal {
+    display: none;
 }

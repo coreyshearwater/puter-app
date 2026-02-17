@@ -81,7 +81,11 @@ window.gravityChat = {
         AppState.mediaParams[param] = value;
         console.log(`🎨 Media Param: ${param} = ${value}`);
     },
-    openMediaLab: () => renderMediaLab()
+    openMediaLab: () => renderMediaLab(),
+    closeMediaLab: () => {
+        const modal = document.getElementById('media-lab-modal');
+        if (modal) modal.style.display = 'none';
+    }
 };
 
 async function init() {

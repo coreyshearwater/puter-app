@@ -11,7 +11,7 @@ if (-not (Test-Path $ChromePath)) {
 }
 
 $Shortcut.TargetPath = $ChromePath
-$Shortcut.Arguments = "--app=http://localhost:8000/index.html --user-data-dir=`"$pwd\chrome_data`""
+$Shortcut.Arguments = "--app=http://localhost:8000/index.html --start-maximized --user-data-dir=`"$pwd\chrome_data`""
 $Shortcut.IconLocation = "$pwd\favicon.ico"
 $Shortcut.WorkingDirectory = "$pwd"
 $Shortcut.Save()

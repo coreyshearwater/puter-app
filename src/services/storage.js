@@ -50,41 +50,49 @@ export async function saveStateToKV() {
 
 // Load state from puter.kv
 export async function loadStateFromKV() {
+    // 1. Immediate heuristic load from localStorage for instant UI responsiveness
     try {
-        // Load personas
-        const personasData = await puter.kv.get('gravitychat_personas');
-        if (personasData) {
-            AppState.personas = JSON.parse(personasData);
+        const settingsData = localStorage.getItem('gravitychat_settings');
+        if (settingsData) {
+            const settings = JSON.parse(settingsData);
+            if (settings.theme) {
+                AppState.theme = settings.theme;
+                // Apply theme immediately (sync)
+                [document.documentElement, document.body].forEach(el => {
+                    const existing = Array.from(el.classList).filter(c => c.startsWith('theme-'));
+                    el.classList.remove(...existing);
+                    el.classList.add('theme-' + settings.theme);
+                });
+            }
         }
-        
-        // Load active persona
-        const activePersonaId = await puter.kv.get('gravitychat_active_persona');
-        if (activePersonaId) {
-            AppState.activePersona = AppState.personas.find(p => p.id === activePersonaId);
-        }
-        
-        // Load settings
+    } catch (e) {}
+
+    try {
+        // 2. Load settings from cloud (Puter KV)
         const settingsData = await puter.kv.get('gravitychat_settings');
         if (settingsData) {
             const settings = JSON.parse(settingsData);
-            AppState.temperature = settings.temperature !== undefined ? settings.temperature : 0.7;
-            AppState.maxTokens = settings.maxTokens || 4096;
-            AppState.autoSpeak = settings.autoSpeak || false;
-            AppState.selectedVoice = settings.selectedVoice || 'Joanna';
-            AppState.premiumEnabled = settings.premiumEnabled || false;
-            if (settings.currentModel) AppState.currentModel = settings.currentModel;
-            if (settings.theme) AppState.theme = settings.theme;
-            if (settings.mediaParams) AppState.mediaParams = settings.mediaParams;
-            if (settings.currentPath) AppState.currentPath = settings.currentPath;
-            if (settings.allowEmojis !== undefined) AppState.allowEmojis = settings.allowEmojis;
-            if (settings.grokMenuExpanded !== undefined) AppState.grokMenuExpanded = settings.grokMenuExpanded;
-            if (settings.grokApiUrl) AppState.grokApiUrl = settings.grokApiUrl;
+            Object.assign(AppState, settings); // Quickly populate state
             
-            if (settings.sessions) AppState.sessions = settings.sessions;
-            if (settings.activeSessionId) AppState.activeSessionId = settings.activeSessionId;
-            if (settings.oracularModes) AppState.oracularModes = settings.oracularModes;
-            
-            // UI elements update will be handled in main.js or separate UI init
+            // Re-apply if KV differs from local
+            if (settings.theme) {
+                [document.documentElement, document.body].forEach(el => {
+                    const themeClasses = Array.from(el.classList).filter(c => c.startsWith('theme-'));
+                    el.classList.remove(...themeClasses);
+                    el.classList.add(`theme-${settings.theme}`);
+                });
+            }
+        }
+
+        // 3. Load personas and other data
+        const personasData = await puter.kv.get('gravitychat_personas');
+        if (personasData) AppState.personas = JSON.parse(personasData);
+        
+        const activePersonaId = await puter.kv.get('gravitychat_active_persona');
+        if (activePersonaId && activePersonaId !== 'null') {
+            AppState.activePersona = AppState.personas.find(p => p.id === activePersonaId);
+        } else {
+            AppState.activePersona = null;
         }
         
         console.log('✅ State loaded from puter.kv');
@@ -96,8 +104,10 @@ export async function loadStateFromKV() {
             if (personasData) AppState.personas = JSON.parse(personasData);
             
             const activePersonaId = localStorage.getItem('gravitychat_active_persona');
-            if (activePersonaId) {
+            if (activePersonaId && activePersonaId !== 'null') {
                 AppState.activePersona = AppState.personas.find(p => p.id === activePersonaId);
+            } else {
+                AppState.activePersona = null;
             }
             
             const settingsData = localStorage.getItem('gravitychat_settings');

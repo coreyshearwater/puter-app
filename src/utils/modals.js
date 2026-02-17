@@ -110,3 +110,45 @@ export function showCustomPersonaModal(existingName, existingPrompt, onSave) {
     return { close: closeHandler };
 }
 
+export function showConfirmModal(title, message, onConfirm) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 slide-in';
+    
+    const modal = document.createElement('div');
+    modal.className = 'glass-card max-w-sm w-full p-6 shadow-2xl border-orange-500/30 slide-in';
+    modal.style.background = 'linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)';
+
+    modal.innerHTML = `
+        <div class="mb-4">
+            <h3 class="text-xl font-bold text-orange-400 tracking-tight">${title}</h3>
+        </div>
+        <div class="text-gray-300 text-sm leading-relaxed mb-6">
+            ${message}
+        </div>
+        <div class="flex justify-end gap-3">
+            <button class="btn btn-sm px-6 btn-outline border-gray-600 text-gray-400 hover:bg-gray-800" id="confirm-cancel">Cancel</button>
+            <button class="btn btn-sm px-6 bg-orange-600 hover:bg-orange-500 text-white border-none" id="confirm-ok">Delete</button>
+        </div>
+    `;
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    const closeHandler = () => {
+        backdrop.style.opacity = '0';
+        backdrop.style.transition = 'opacity 0.2s ease';
+        setTimeout(() => backdrop.remove(), 200);
+    };
+
+    backdrop.querySelector('#confirm-cancel').onclick = closeHandler;
+    backdrop.querySelector('#confirm-ok').onclick = () => {
+        onConfirm();
+        closeHandler();
+    };
+
+    backdrop.onclick = (e) => {
+        if (e.target === backdrop) closeHandler();
+    };
+}
+
+

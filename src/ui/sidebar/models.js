@@ -100,5 +100,7 @@ export function selectModel(modelId) {
 }
 
 export function updateCurrentModelDisplay() {
-    updateElementText('current-model-display', AppState.currentModel);
+    const model = AppState.allModels.find(m => m.id === AppState.currentModel);
+    const displayName = model ? (model.name || model.id) : AppState.currentModel;
+    updateElementText('current-model-display', displayName);
 }

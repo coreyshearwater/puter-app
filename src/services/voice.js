@@ -4,6 +4,82 @@ import { showToast } from '../utils/toast.js';
 import { saveStateToKV } from './storage.js';
 import { processSemanticCommand } from './intents.js';
 
+// Helper to wait for AI to finish streaming (e.g. processing background commands)
+async function waitForAIIdle(timeout = 5000) {
+    if (!AppState.isStreaming) return true;
+    
+    const start = Date.now();
+    while (AppState.isStreaming) {
+        if (Date.now() - start > timeout) return false;
+        await new Promise(r => setTimeout(r, 200));
+    }
+    return true;
+
+    return true;
+}
+
+let currentAudio = null; // Track active Cloud TTS
+let speechQueue = [];
+let isSpeakingAudio = false;
+let activeSpeakingBubble = null; // Track which bubble is currently speaking
+
+// Queue speech chunk
+export async function queueSpeech(text, bubble) {
+    if (!text || !text.trim()) return;
+    
+    // Track the bubble and add stop button immediately on first chunk
+    if (speechQueue.length === 0) {
+        activeSpeakingBubble = bubble;
+        if (bubble && !bubble.querySelector('.btn-stop-voice')) {
+            const stopBtn = document.createElement('button');
+            stopBtn.className = 'btn-stop-voice speaking';
+            stopBtn.title = 'Stop reading out loud';
+            stopBtn.innerHTML = `
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="6" width="12" height="12" rx="1" />
+                </svg>
+            `;
+            stopBtn.onclick = (e) => {
+                e.stopPropagation();
+                stopSpeech();
+            };
+            bubble.appendChild(stopBtn);
+        }
+    }
+    
+    speechQueue.push({ text, bubble });
+    if (!isSpeakingAudio) processSpeechQueue();
+}
+
+async function processSpeechQueue() {
+    if (speechQueue.length === 0) {
+        isSpeakingAudio = false;
+        activeSpeakingBubble = null;
+        // Resume recording if in voice session
+        if (AppState.isVoiceSession && !AppState.isRecording) {
+            console.log('🎙️ Resuming recording after speech...');
+            setTimeout(() => startRecording(), 500);
+        }
+        return;
+    }
+
+    // Stop recording BEFORE starting to speak (only on first chunk)
+    if (!isSpeakingAudio) {
+        if (AppState.isRecording) {
+            console.log('🔇 Stopping mic before speech...');
+            stopRecording();
+            await new Promise(r => setTimeout(r, 150)); // Brief pause
+        } else {
+            console.log('⚠️ Mic not recording, skipping stop');
+        }
+    }
+    
+    isSpeakingAudio = true;
+    const { text, bubble } = speechQueue.shift();
+    await speakText(text, bubble, true); // true = internal call
+    processSpeechQueue();
+}
+
 // Load available voices (Cloud + Native)
 export function loadVoices() {
     const selector = document.getElementById('voice-selector');
@@ -74,13 +150,45 @@ if (window.speechSynthesis) {
 }
 
 // Speak text using Puter.js txt2speech with fallback
-export async function speakText(text) {
+export async function speakText(text, bubble, isInternal = false) {
     if (!text || !AppState.autoSpeak) return;
+    
+    // If external call (e.g. manual play), clear queue and stop current
+    if (!isInternal) {
+        stopSpeech();
+    }
     
     // Clean text: strip emojis to prevent TTS from reading them out loud
     const cleanText = text.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
     
     if (!cleanText) return;
+
+    // Stop button is now added in queueSpeech for instant visibility
+    // Only add here if called directly (not from queue)
+    let stopBtn = null;
+    if (bubble && !isInternal && !bubble.querySelector('.btn-stop-voice')) {
+        stopBtn = document.createElement('button');
+        stopBtn.className = 'btn-stop-voice speaking';
+        stopBtn.title = 'Stop reading out loud';
+        stopBtn.innerHTML = `
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="6" width="12" height="12" rx="1" />
+            </svg>
+        `;
+        stopBtn.onclick = (e) => {
+            e.stopPropagation();
+            stopSpeech();
+        };
+        bubble.appendChild(stopBtn);
+    }
+
+    const cleanup = () => {
+        // Only remove button if it's on the active speaking bubble
+        if (stopBtn && stopBtn.parentNode && bubble === activeSpeakingBubble) {
+            stopBtn.remove();
+        }
+        currentAudio = null;
+    };
 
     try {
         console.log('Speaking text (cleaned)...');
@@ -92,17 +200,21 @@ export async function speakText(text) {
             // Try Puter AI TTS first
             try {
                 console.log(`Attempting Cloud TTS: ${AppState.selectedVoice}`);
-                // Puter.js v2 txt2speech signature: (text, languageCode, voiceName)
-                const audio = await puter.ai.txt2speech(cleanText, 'en-US', AppState.selectedVoice);
+                currentAudio = await puter.ai.txt2speech(cleanText, 'en-US', AppState.selectedVoice);
                 
                 return new Promise((resolve) => {
-                    audio.onended = () => resolve();
-                    audio.onerror = (e) => {
+                    currentAudio.onended = () => {
+                        cleanup();
+                        resolve();
+                    };
+                    currentAudio.onerror = (e) => {
                         console.error('Audio playback error', e);
+                        cleanup();
                         resolve(); 
                     };
-                    audio.play().catch(e => {
+                    currentAudio.play().catch(e => {
                          console.error('Play error', e); 
+                         cleanup();
                          resolve();
                     });
                 });
@@ -130,16 +242,50 @@ export async function speakText(text) {
              if (voice) utterance.voice = voice;
              
              return new Promise((resolve) => {
-                 utterance.onend = () => resolve();
-                 utterance.onerror = () => resolve();
+                 utterance.onend = () => {
+                     cleanup();
+                     resolve();
+                 };
+                 utterance.onerror = () => {
+                     cleanup();
+                     resolve();
+                 };
                  window.speechSynthesis.speak(utterance);
              });
         } catch (nativeError) {
             console.error('Native TTS error:', nativeError);
+            cleanup();
         }
     } catch (outerError) {
         console.error('Outer TTS error:', outerError);
+        cleanup();
     }
+}
+
+// Global Stop Speech
+export function stopSpeech() {
+    // Stop Cloud TTS
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+    }
+    
+    // Stop Native TTS
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
+
+    // Remove stop button only from active bubble
+    if (activeSpeakingBubble) {
+        const btn = activeSpeakingBubble.querySelector('.btn-stop-voice');
+        if (btn) btn.remove();
+    }
+    
+    // Clear Queue
+    speechQueue = [];
+    isSpeakingAudio = false;
+    activeSpeakingBubble = null;
 }
 
 // Start recording audio (with VAD option)
@@ -166,7 +312,7 @@ export async function startRecording() {
         const dataArray = new Uint8Array(bufferLength);
         
         const silenceThreshold = 10;
-        const silenceDelay = 1500;
+        const silenceDelay = 700; // optimized for speed
         let silenceStart = Date.now();
         let isSpeaking = false;
         
@@ -259,15 +405,20 @@ async function transcribeAudio(audioBlob) {
             input.value = (input.value ? input.value + ' ' : '') + text;
             showToast('Transcribed speech', 'success');
             
-            if (AppState.isVoiceSession) {
-                const { sendMessage } = await import('./ai.js');
-                await sendMessage();
+            // Wait for any background tasks (like mode switching) to finish
+            const isIdle = await waitForAIIdle();
+            
+            if (isIdle) {
+                 const { sendMessage } = await import('./ai.js');
+                 await sendMessage();
+            } else {
+                 showToast('AI busy, please press send', 'warning');
             }
         } else {
             showToast('No speech detected', 'warning');
         }
         
-        if (AppState.isVoiceSession) setTimeout(() => startRecording(), 500); 
+        if (AppState.isVoiceSession) setTimeout(() => startRecording(), 200); // optimized restart
         
     } catch (error) {
         console.error('Transcription error:', error);

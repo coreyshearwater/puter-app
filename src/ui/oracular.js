@@ -30,6 +30,9 @@ export function updatePersonaHeader() {
     label.textContent = `Persona: ${persona.name}`;
     label.style.color = persona.color;
     
+    const dot = document.getElementById('persona-dot');
+    if (dot) dot.style.background = persona.color;
+    
     // Handle Oracular-specific buttons
     if (persona.id === 'oracular') {
         oracularModes.classList.remove('hidden');

@@ -45,7 +45,7 @@ def main():
     # 3. Launch Chrome App Mode via Shortcut or Direct
     # Using the shortcut ensures the icon is correct on taskbar
     chrome_path = find_chrome()
-    url = "http://localhost:8000/index_v2.html"
+    url = "http://localhost:8000/index.html"
     
     # We launch via the shortcut we created earlier if it exists, otherwise direct chrome
     shortcut_path = os.path.abspath("GravityChat.lnk")
@@ -55,7 +55,7 @@ def main():
         os.startfile(shortcut_path)
     elif chrome_path:
         print(f"Launching via Chrome path: {chrome_path}")
-        subprocess.Popen([chrome_path, f"--app={url}", f"--user-data-dir={os.path.abspath('chrome_data')}"])
+        subprocess.Popen([chrome_path, f"--app={url}", "--start-maximized", f"--user-data-dir={os.path.abspath('chrome_data')}"])
     else:
         print("Chrome not found, opening default browser...")
         webbrowser.open(url)

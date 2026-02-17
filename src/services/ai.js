@@ -4,9 +4,11 @@ import { renderMarkdown } from '../utils/markdown.js';
 import { scrollToBottom } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
 import { getProjectContext } from './memory.js';
-import { speakText } from './voice.js';
+import { speakText, queueSpeech } from './voice.js'; // Import queueSpeech
 import { askGrok } from './grok-service.js';
 import { showErrorModal } from '../utils/modals.js';
+import { saveStateToKV } from './storage.js';
+import { syncCurrentSession } from '../ui/sidebar/sessions.js';
 
 const FREE_FALLBACK_CHAIN = [
     'z-ai/glm-4.5-air:free',
@@ -35,6 +37,10 @@ export async function sendMessage() {
     const userMessage = { role: 'user', content, attachments };
     AppState.messages.push(userMessage);
     renderMessage(userMessage);
+    
+    // Persist user message
+    syncCurrentSession();
+    saveStateToKV();
     
     // AI Thinking
     AppState.isStreaming = true;
@@ -134,6 +140,11 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
                 
                 aiMessageElement.innerHTML = renderMarkdown(result.text, false);
                 AppState.messages.push({ role: 'assistant', content: result.text });
+                
+                // Persist Grok response
+                syncCurrentSession();
+                saveStateToKV();
+                
                 await speakText(result.text);
                 return;
             } catch (error) {
@@ -142,19 +153,37 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             }
         }
 
+        // GPT-5 models only support temperature=1
+        const useDefaultTemp = currentModel.includes('gpt-5');
+        
         const response = await puter.ai.chat(messagesToSend, {
             model: currentModel,
             stream: true,
-            temperature: AppState.temperature,
+            temperature: useDefaultTemp ? 1 : AppState.temperature,
             max_tokens: AppState.maxTokens,
         });
         
         let fullText = '';
         let chunkCount = 0;
+        let speechBuffer = '';
+
         for await (const chunk of response) {
             if (chunk.text) {
                 fullText += chunk.text;
                 chunkCount++;
+                
+                // Add to speech buffer
+                if (AppState.autoSpeak) {
+                    speechBuffer += chunk.text;
+                    // Check for sentence endings
+                    const sentenceMatch = speechBuffer.match(/([.!?\n])\s+/);
+                    if (sentenceMatch) {
+                        const index = sentenceMatch.index + sentenceMatch[0].length;
+                        const sentence = speechBuffer.substring(0, index);
+                        queueSpeech(sentence, aiMessageElement);
+                        speechBuffer = speechBuffer.substring(index);
+                    }
+                }
                 
                 // PERFORMANCE TWEAK: Only update DOM every 3 chunks during streaming
                 // This drastically reduces layout thrashing without losing "fluidity"
@@ -165,9 +194,19 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             }
         }
         
+        // Speak remaining buffer
+        if (AppState.autoSpeak && speechBuffer.trim()) {
+            queueSpeech(speechBuffer, aiMessageElement);
+        }
+        
         aiMessageElement.innerHTML = renderMarkdown(fullText, false);
         AppState.messages.push({ role: 'assistant', content: fullText });
-        await speakText(fullText);
+        
+        // Persist final response
+        syncCurrentSession();
+        saveStateToKV();
+        // Deprecated single-shot call, replaced by streaming queue above
+        // speakText(fullText, aiMessageElement);
         
     } catch (error) {
         console.error(`Model ${currentModel} failed:`, error);

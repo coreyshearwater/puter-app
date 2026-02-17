@@ -43,14 +43,20 @@ export function createAIMessageElement() {
     return bubble;
 }
 
-export function clearChat() {
-    if (!confirm('Clear chat history?')) return;
-    AppState.messages = [];
-    document.getElementById('messages-container').innerHTML = `
-        <div class="glass-card p-4 mb-4 text-center">
-            <h2 class="text-xl font-bold mb-2">Welcome to GravityChat!</h2>
-            <p class="text-sm text-gray-400">Your personal AI workstation, forever free.</p>
-        </div>`;
+export async function clearChat() {
+    const { showConfirmModal } = await import('../utils/modals.js');
+    const { syncCurrentSession } = await import('./sidebar/sessions.js');
+    
+    showConfirmModal(
+        'Clear Chat History', 
+        'This will wipe all messages from the current workspace. This action cannot be undone.', 
+        () => {
+            AppState.messages = [];
+            const container = document.getElementById('messages-container');
+            if (container) container.innerHTML = '';
+            syncCurrentSession();
+        }
+    );
 }
 
 export function exportChat() {
