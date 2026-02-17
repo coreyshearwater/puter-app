@@ -168,14 +168,15 @@ function showAuthOverlay() {
 async function completeInit() {
     // State & Listeners
     try {
-        setupGlobalListeners();
-        setupInputListeners();
-    } catch (e) { console.error('Listeners setup failed', e); }
-
-    try {
         await loadStateFromKV();
         await loadIndexFromKV();
     } catch (e) { console.error('State loading failed', e); }
+
+    // Event Listeners
+    try {
+        setupGlobalListeners();
+        setupInputListeners();
+    } catch (e) { console.error('Listeners setup failed', e); }
     
     // UI Init
     try {

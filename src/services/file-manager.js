@@ -138,7 +138,9 @@ export async function deleteFile(path) {
 
 export async function previewFile(path, attach = false) {
     try {
-        const content = await puter.fs.read(path);
+        let content = await puter.fs.read(path);
+        if (content instanceof Blob) content = await content.text();
+        
         if (typeof content !== 'string') return showToast('Binary files not supported', 'warning');
         
         if (attach) {

@@ -171,4 +171,43 @@ export function showConfirmModal(title, message, onConfirm) {
     document.addEventListener('keydown', escHandler);
 }
 
+export function showInfoModal(title, message) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 slide-in';
+    
+    const modal = document.createElement('div');
+    modal.className = 'glass-card max-w-md w-full p-6 shadow-2xl border-cyan-500/30 slide-in';
+    modal.style.background = 'linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)';
+
+    modal.innerHTML = `
+        <div class="flex items-start justify-between mb-4">
+            <h3 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent tracking-tight" id="info-title"></h3>
+            <button class="btn btn-sm btn-ghost btn-square text-gray-500 hover:text-white" id="close-info-x">×</button>
+        </div>
+        <div class="text-gray-300 text-sm leading-relaxed mb-6" id="info-message"></div>
+        <div class="flex justify-end gap-3">
+            <button class="btn btn-sm px-6 bg-cyan-600 hover:bg-cyan-500 text-white border-none rounded shadow-lg shadow-cyan-500/20" id="close-info-btn">Got it</button>
+        </div>
+    `;
+
+    modal.querySelector('#info-title').textContent = title;
+    modal.querySelector('#info-message').textContent = message;
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    const closeHandler = () => {
+        backdrop.style.opacity = '0';
+        backdrop.style.transition = 'opacity 0.2s ease';
+        setTimeout(() => backdrop.remove(), 200);
+    };
+
+    backdrop.querySelector('#close-info-x').onclick = closeHandler;
+    backdrop.querySelector('#close-info-btn').onclick = closeHandler;
+    backdrop.onclick = (e) => { if (e.target === backdrop) closeHandler(); };
+
+    const escHandler = (e) => { if (e.key === 'Escape') { closeHandler(); document.removeEventListener('keydown', escHandler); } };
+    document.addEventListener('keydown', escHandler);
+}
+
 

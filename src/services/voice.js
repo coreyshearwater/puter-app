@@ -21,6 +21,28 @@ let speechQueue = [];
 let isSpeakingAudio = false;
 let activeSpeakingBubble = null; // Track which bubble is currently speaking
 let activeAudioContext = null; // Track AudioContext to prevent leaks
+let statusTimer = null; // Track UI timeout
+
+// Helper to manage status bar
+function setVoiceStatus(text, autoHideMs = 0) {
+    const statusEl = document.getElementById('voice-status');
+    const textEl = document.getElementById('voice-status-text');
+    if (!statusEl || !textEl) return;
+    
+    if (statusTimer) clearTimeout(statusTimer);
+    
+    if (text) {
+        textEl.textContent = text;
+        statusEl.classList.remove('hidden');
+        if (autoHideMs > 0) {
+            statusTimer = setTimeout(() => {
+                statusEl.classList.add('hidden');
+            }, autoHideMs);
+        }
+    } else {
+        statusEl.classList.add('hidden');
+    }
+}
 
 // Queue speech chunk
 // Store original send button innerHTML for restoration
@@ -188,7 +210,7 @@ export async function speakText(text, bubble, isInternal = false) {
             // Try Puter AI TTS first
             try {
                 console.log(`Attempting Cloud TTS: ${AppState.selectedVoice}`);
-                currentAudio = await puter.ai.txt2speech(cleanText, 'en-US', AppState.selectedVoice);
+                currentAudio = await puter.ai.txt2speech(cleanText, { language: 'en-US', voice: AppState.selectedVoice });
                 
                 return new Promise((resolve) => {
                     currentAudio.onended = () => {
@@ -208,7 +230,7 @@ export async function speakText(text, bubble, isInternal = false) {
                 });
             } catch (puterError) {
                 console.warn('Puter TTS failed:', puterError);
-                if (!isNativeForce) showToast(`Cloud Voice Failed, using device backup`, 'warning');
+                if (!isNativeForce) setVoiceStatus('USING BACKUP VOICE', 2000);
             }
         }
         
@@ -318,7 +340,7 @@ export async function startRecording() {
              if (AppState.audioChunks.length > 0) {
                 const blob = new Blob(AppState.audioChunks, { type: mimeType });
                 const file = new File([blob], "voice.webm", { type: mimeType });
-                showToast('Processing speech...', 'info');
+                setVoiceStatus('PROCESSING...');
                 await transcribeAudio(file);
              }
         };
@@ -350,7 +372,9 @@ export async function startRecording() {
         };
         
         checkSilence();
-        showToast('Listening...', 'info');
+
+        // showToast('Listening...', 'info');
+        setVoiceStatus('LISTENING...');
         
     } catch (error) {
         console.error('Failed to start recording:', error);
@@ -370,6 +394,8 @@ export function stopRecording() {
         
         const micBtn = document.getElementById('btn-mic');
         micBtn.classList.remove('btn-error', 'animate-pulse');
+        
+        setVoiceStatus(null); // Hide status
         
         if (AppState.audioStream) {
             AppState.audioStream.getTracks().forEach(track => track.stop());
@@ -398,7 +424,8 @@ async function transcribeAudio(audioBlob) {
 
             const input = document.getElementById('user-input');
             input.value = (input.value ? input.value + ' ' : '') + text;
-            showToast('Transcribed speech', 'success');
+            
+            setVoiceStatus('TRANSCRIBED', 2000); // Show success then hide
             
             // Wait for any background tasks (like mode switching) to finish
             const isIdle = await waitForAIIdle();
@@ -407,17 +434,17 @@ async function transcribeAudio(audioBlob) {
                  const { sendMessage } = await import('./ai.js');
                  await sendMessage();
             } else {
-                 showToast('AI busy, please press send', 'warning');
+                 setVoiceStatus('SYSTEM BUSY', 2000);
             }
         } else {
-            showToast('No speech detected', 'warning');
+            setVoiceStatus('NO SPEECH', 2000);
         }
         
         if (AppState.isVoiceSession && !isSpeakingAudio) setTimeout(() => startRecording(), 200); // optimized restart
         
     } catch (error) {
         console.error('Transcription error:', error);
-        showToast(`Transcription failed`, 'error');
+        setVoiceStatus('ERROR', 2000);
         if (AppState.isVoiceSession && !isSpeakingAudio) setTimeout(() => startRecording(), 1000);
     }
 }
@@ -429,7 +456,7 @@ export function toggleVoiceSession() {
         AppState.isVoiceSession = false;
         stopRecording();
         micBtn.classList.remove('btn-secondary');
-        showToast('Continuous Mode: OFF', 'info');
+        setVoiceStatus('CONTINUOUS: OFF', 2000);
     } else {
         AppState.isVoiceSession = true;
         if (!AppState.isRecording) {
@@ -437,6 +464,6 @@ export function toggleVoiceSession() {
             startRecording();
         }
         micBtn.classList.add('btn-secondary');
-        showToast('Continuous Mode: ON', 'success');
+        setVoiceStatus('CONTINUOUS: ON', 2000);
     }
 }

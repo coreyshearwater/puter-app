@@ -1,6 +1,7 @@
 import { AppState } from '../../state.js';
 import { updateElementText } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
+import { showInfoModal } from '../../utils/modals.js';
 
 export async function fetchModels() {
     try {
@@ -20,8 +21,8 @@ export async function fetchModels() {
     } catch (error) {
         console.error('Fetch models failed, using fallbacks');
         AppState.allModels = [
-            { id: 'z-ai/glm-4.5-air:free', name: 'GLM 4.5 Air (Free)', cost: { input: 0, output: 0 } },
-            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: { input: 1, output: 1 } }
+            { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B (Free)', cost: { input: 0, output: 0 } },
+            { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', cost: { input: 0, output: 0 } }
         ];
         AppState.freeModels = AppState.allModels.filter(m => m.cost.input === 0);
     } finally {
@@ -92,11 +93,39 @@ export function toggleGrokMenu() {
     renderModelList(document.getElementById('model-search')?.value || '');
 }
 
-export function selectModel(modelId) {
+export async function selectModel(modelId) {
     AppState.currentModel = modelId;
     updateCurrentModelDisplay();
     renderModelList(document.getElementById('model-search')?.value || '');
     showToast(`Model: ${modelId}`, 'success');
+
+    // "Pre-flight" check: Verify the model is actually online
+    // This addresses user feedback about needing to know *before* typing
+    try {
+        const model = AppState.allModels.find(m => m.id === modelId);
+        // Only check free models, or if cost is zero. Avoid generating costs for paid models.
+        const isFree = model?.id.endsWith(':free') || model?.cost?.input === 0 || model?.provider === 'xAI';
+        
+        if (isFree) {
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+            // Send empty/minimal prompt
+            await Promise.race([
+                puter.ai.chat('test', { model: modelId, max_tokens: 1 }),
+                timeout
+            ]);
+        }
+    } catch (error) {
+        console.warn(`Model ${modelId} health check failed:`, error);
+        
+        // Find a fallback (Simple logic: first reliable free model that isn't the broken one)
+        let candidates = (AppState.freeModels || []).map(m => m.id);
+        const fallback = candidates.find(id => id !== modelId);
+        
+        if (fallback) {
+            showInfoModal('Model Unavailable', `The selected model (${modelId}) failed a connection test. Switched to ${fallback} to ensure stability.`);
+            selectModel(fallback);
+        }
+    }
 }
 
 export function updateCurrentModelDisplay() {

@@ -92,7 +92,7 @@
                 <button class="nav-tab active" data-tab="chat" aria-expanded="true">
                     <span class="flex items-center gap-3">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                        Main Chat
+                        Chat List
                     </span>
                 </button>
                 <div id="tab-chat" class="gchat-tab-panel">
@@ -246,6 +246,12 @@
 
         <!-- Bottom Container -->
         <footer id="bottom-container">
+            <div id="voice-status" class="hidden absolute bottom-full left-0 w-full text-center pb-2 pointer-events-none">
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 border border-red-500/30 text-red-400 text-xs font-mono tracking-wider backdrop-blur-md">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                    <span id="voice-status-text">LISTENING...</span>
+                </span>
+            </div>
             <div id="input-bar" class="w-full relative">
                 <div class="glass-card w-full flex items-end gap-2 p-3 shadow-2xl shadow-black/50 border-white/10">
                     <button id="btn-attach" class="btn btn-ghost btn-circle btn-sm btn-icon mb-1" title="Attach file" aria-label="Attach">

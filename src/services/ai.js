@@ -6,17 +6,17 @@ import { showToast } from '../utils/toast.js';
 import { getProjectContext } from './memory.js';
 import { speakText, queueSpeech } from './voice.js'; // Import queueSpeech
 import { askGrok } from './grok-service.js';
-import { showErrorModal } from '../utils/modals.js';
+import { showErrorModal, showInfoModal } from '../utils/modals.js';
 import { saveStateToKV } from './storage.js';
 import { syncCurrentSession } from '../ui/sidebar/sessions.js';
 
 const FREE_FALLBACK_CHAIN = [
-    'z-ai/glm-4.5-air:free',
-    'arcee-ai/trinity-large-preview:free',
-    'liquid-lfm-2.5-1.2b-instruct:free',
-    'stepfun-step-3.5-flash:free',
-    'hermes-2-theta-llama-3-70b:free',
-    'gemini-2.5-flash-lite',
+    'google/gemma-2-9b-it:free', 'google/gemma-2-9b-it',
+    'meta-llama/llama-3.1-8b-instruct:free', 'meta-llama/llama-3.1-8b-instruct',
+    'mistralai/mistral-7b-instruct:free', 'mistralai/mistral-7b-instruct',
+    'microsoft/phi-3-medium-128k-instruct:free', 'microsoft/phi-3-medium-128k-instruct',
+    'gpt-4o-mini',
+    'gpt-3.5-turbo'
 ];
 
 const MAX_CONTEXT_MESSAGES = 20;
@@ -97,6 +97,10 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
     if (attemptedModels.includes(currentModel)) throw new Error('All fallbacks failed');
     attemptedModels.push(currentModel);
     
+    let fullText = '';
+    let chunkCount = 0;
+    let speechBuffer = '';
+
     try {
         let messagesToSend = [];
         const projectContext = getProjectContext();
@@ -115,6 +119,12 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
         const recentMessages = AppState.messages.slice(-MAX_CONTEXT_MESSAGES);
         
         for (const msg of recentMessages) {
+            // Safety: Skip hidden messages (system commands) and empty content
+            if (msg.hidden) continue;
+            if (!msg.content || (typeof msg.content === 'string' && !msg.content.trim())) {
+                continue;
+            }
+
             if (msg.attachments?.length > 0) {
                 const contentArray = [{ type: 'text', text: msg.content }];
                 for (const attach of msg.attachments) {
@@ -135,40 +145,26 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             }
         }
         
+        let response;
+
         if (currentModel.startsWith('grok-')) {
-            try {
-                aiMessageElement.innerHTML = '<span class="loading loading-dots loading-sm"></span> Grok is thinking...';
-                const result = await askGrok(AppState.messages[AppState.messages.length - 1].content, currentModel);
-                
-                aiMessageElement.innerHTML = renderMarkdown(result.text, false);
-                AppState.messages.push({ role: 'assistant', content: result.text });
-                
-                // Persist Grok response
-                syncCurrentSession();
-                saveStateToKV();
-                
-                await speakText(result.text);
-                return;
-            } catch (error) {
-                console.error(`Model ${currentModel} failed:`, error.message || error);
-                throw error;
-            }
+            aiMessageElement.innerHTML = '<span class="loading loading-dots loading-sm"></span>';
+            // Grok uses stateful conversation ID on backend, so we pass the latest prompt
+            const lastUserMsg = AppState.messages[AppState.messages.length - 1];
+            // Pass true for streaming
+            response = await askGrok(lastUserMsg.content, currentModel, true);
+        } else {
+            // Standard Puter AI (Stateless, sends history)
+            const useDefaultTemp = currentModel.includes('gpt-5');
+            response = await puter.ai.chat(messagesToSend, {
+                model: currentModel,
+                stream: true,
+                temperature: useDefaultTemp ? 1 : AppState.temperature,
+                max_tokens: AppState.maxTokens,
+            });
         }
-
-        // GPT-5 models only support temperature=1
-        const useDefaultTemp = currentModel.includes('gpt-5');
         
-        const response = await puter.ai.chat(messagesToSend, {
-            model: currentModel,
-            stream: true,
-            temperature: useDefaultTemp ? 1 : AppState.temperature,
-            max_tokens: AppState.maxTokens,
-        });
-        
-        let fullText = '';
-        let chunkCount = 0;
-        let speechBuffer = '';
-
+        // Unified Streaming Loop
         for await (const chunk of response) {
             if (chunk.text) {
                 fullText += chunk.text;
@@ -203,7 +199,10 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
         
         aiMessageElement.innerHTML = renderMarkdown(fullText, false);
 
-        AppState.messages.push({ role: 'assistant', content: fullText });
+        // Only append to history if we actually got a response
+        if (fullText.trim()) {
+            AppState.messages.push({ role: 'assistant', content: fullText });
+        }
         
         // Persist final response
         syncCurrentSession();
@@ -231,12 +230,37 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             errorMsg.includes('failed') || 
             errorMsg.includes('unavailable') ||
             errorMsg.includes('rate_limit') ||
-            errorMsg.includes('model_not_found');
+            errorMsg.includes('model_not_found') ||
+            errorMsg.includes('not found');
 
         if (isFallbackCandidate) {
-            const nextModel = FREE_FALLBACK_CHAIN.find(id => !attemptedModels.includes(id));
+            
+            // SELF-HEALING: Check for moderation loop (persisted bad state)
+            if (errorMsg.includes('moderation_failed')) {
+                console.warn('⚠️ Moderation Loop Detected. Initiating Self-Healing...');
+                showToast('Corruption detected. Auto-repairing...', 'warning');
+                
+                // Clear state and reload to fix the loop
+                await puter.kv.del('appState');
+                setTimeout(() => window.location.reload(), 1500);
+                return;
+            }
+
+            // Standard Fallback Logic
+            // Create a robust candidate list:
+            // 1. Dynamic free models from Puter (most reliable)
+            // 2. Hardcoded fallback chain (if dynamic fetch failed)
+            let candidates = (AppState.freeModels || []).map(m => m.id);
+            
+            // If dynamic list is empty or exhausted, append hardcoded chain as backup
+            if (candidates.length === 0) candidates = FREE_FALLBACK_CHAIN;
+            else candidates = [...new Set([...candidates, ...FREE_FALLBACK_CHAIN])]; // Merge unique
+            
+            const nextModel = candidates.find(id => !attemptedModels.includes(id));
+            
             if (nextModel) {
-                showToast(`Credits low, trying free model: ${nextModel}`, 'info');
+                // showToast(`Credits low/Error, trying free model: ${nextModel}`, 'info');
+                showInfoModal('Model Switch', `The selected model failed to respond. Automatically switched to temporary free model: ${nextModel}`);
                 AppState.currentModel = nextModel;
                 document.dispatchEvent(new CustomEvent('updateModelDisplay'));
                 return await executeChatWithFallback(aiMessageElement, attemptedModels);
@@ -260,10 +284,8 @@ export async function generateImage(prompt) {
         };
         
         const finalPrompt = `${style} style, ${prompt}`;
-        // DOCUMENTATION AUDIT FIX: Docs specify txt2img(prompt, testMode boolean)
-        // Passing options object might be ignored or cause issues. Reverting to true (testMode) for safety.
-        // const image = await puter.ai.txt2img(finalPrompt, options);
-        const image = await puter.ai.txt2img(finalPrompt, true);
+        // DOCUMENTATION AUDIT FIX: Docs specify txt2img(prompt, options)
+        const image = await puter.ai.txt2img(finalPrompt, { style, testMode: true });
         
         const imgElement = document.createElement('img');
         imgElement.src = image.src;

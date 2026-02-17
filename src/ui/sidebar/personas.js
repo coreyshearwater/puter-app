@@ -145,7 +145,7 @@ export async function createPersona() {
         
         const newPersona = { id, name, color, systemPrompt: prompt };
         AppState.personas.push(newPersona);
-        AppState.activePersona = newPersona;
+        // AppState.activePersona = newPersona; // Don't auto-select
         
         renderPersonasList();
         updatePersonaHeader();

@@ -1,4 +1,4 @@
-# GravityChat - Your Personal AI Workstation (v2.0 "The Evolution")
+# GravityChat - Your Personal AI Workstation (v2.3.7 "Dynamic Fallback")
 
 GravityChat is a powerful, modular AI workstation that runs entirely in your browser. Built with **Puter.js v2**, it provides a complete OS-like experience with zero backend setup required.
 

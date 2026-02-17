@@ -2,6 +2,51 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.3.7] - "Fallback Modal" - 2026-02-17
+
+### Added
+
+- **UI**: Added a dedicated info modal to notify users when a model fallback occurs, replacing the transient toast notification.
+- **UX**: Implemented instant model health check on selection. If the selected model is offline, the app immediately switches to a working fallback and notifies the user *before* they type a message.
+- **Fix**: Resolved an issue where the "Stop" button would not appear during audio playback for Grok model responses.
+- **Feat**: Enabled true streaming for Grok! Responses now appear instantly token-by-token instead of waiting for the full message. (Requires restarting the local Grok server).
+
+### Fixed
+
+- **Critical Model Fallback**: Updated chat execution to dynamically fetch available models from Puter API instead of relying on potentially outdated hardcoded lists, resolving "Model not found" errors.
+
+## [v2.3.5] - "Model Reliability" - 2026-02-17
+
+### Changed
+
+- **Model Fallback**: Updated the automatic fallback chain to favor more reliable models (Google Gemma 2, Llama 3.1) over experimental ones to prevent chat failures.
+- **Model Fetch**: Updated the default model list to exclude deprecated models.
+- **Voice UI**: Consolidated all voice status messages (Listening, Transcribing, Errors) into the dedicated status bar above the input field, removing overlapping toast notifications.
+
+## [v2.3.4] - "Compliance Audit" - 2026-02-17
+
+### Fixed
+
+- **API Compliance**: Updated `puter.ai.txt2speech` to use the correct v2 signature (options object instead of 3 arguments).
+- **File System**: Fixed a potential crash in `loadFiles` where `puter.fs.read` returns a Blob instead of a string (v2 standard).
+- **Image Generation**: Corrected the `puter.ai.txt2img` call to pass options correctly, enabling proper style selection.
+
+## [v2.3.3] - "Polish & Stability" - 2026-02-17
+
+### Fixed
+
+- **Model List Sync**: Fixed an issue where premium models were visible in free mode on startup by ensuring the toggle state is synchronized before models are fetched.
+- **Chat Crash**: Resolved a critical "fullText is not defined" error that occurred during model fallback, preventing the app from crashing when a provider fails.
+- **Persona Creation**: Newly created personas are no longer automatically selected, allowing for batch creation without context switching.
+- **Voice Logic**: Fixed a duplicate variable declaration in `voice.js` that could cause runtime errors.
+
+### Changed
+
+- **UI Renaming**: Renamed "Main Chat" to "Chat List" in the sidebar for better clarity.
+- **Voice UI**:
+  - Moved the "Listening..." status indicator from ephemeral toast notifications to a dedicated, persistent status bar above the input field.
+  - The microphone button now clears its active state correctly when recording stops.
+
 ## [v2.3.2] - "Polished" - 2026-02-17
 
 - **Moved**: Voice stop button from AI message bubble corner → send button. When AI speaks, send button transforms into a pulsing red stop with tooltip.

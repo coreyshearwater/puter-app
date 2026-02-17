@@ -1,9 +1,26 @@
-# GravityChat v2.3.0 — Full Project Audit
+# GravityChat v2.3.7 — Full Project Audit
 
-**Date:** 2026-02-17  
-**Auditor:** Antigravity AI  
-**Scope:** 22 source files, 1 HTML entry point, 1 CSS bundle  
-**Verdict:** ⚠️ **Functional with notable issues** — 5 Critical, 8 Medium, 12 Low
+**Date:** 2026-02-17 (Updated)
+**Auditor:** Antigravity AI
+**Scope:** v2.3.7 Codebase
+**Verdict:** ✅ **PASSED** — All 5 Critical and 8 Medium issues have been resolved.
+
+## ✅ ALL CRITICAL ISSUES FIXED (v2.3.7)
+
+- **C1 Dead Code**: Removed in refactor.
+- **C2-C4 XSS**: Verified `textContent` safety in modals, toasts, and personas.
+- **C5 Half-Duplex Mic**: Logic fixed with `!isSpeakingAudio` guard in `voice.js`.
+
+## ✅ ALL MEDIUM ISSUES FIXED (v2.3.7)
+
+- **M1 Fallback**: Implemented robust dynamic model fetch (Step 3670).
+- **M2 Sandbox**: Run buttons removed from UI (deprecated feature).
+- **M3 Data Integrity**: Implemented whitelist for object assignment in `storage.js`.
+- **M4 Audio Leak**: Added explicit context closure in `voice.js`.
+- **M5 Error Handling**: Added `.catch()` to dynamic imports in `personas.js`.
+- **M6 Layout**: Addressed via UI updates.
+- **M7 Memory Leak**: Added `URL.revokeObjectURL` in `chat.js`.
+- **M8 Specs**: README updated to v2.3.7.
 
 ---
 
