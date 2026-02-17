@@ -1,7 +1,7 @@
 @echo off
 title GravityChat Server
 echo ==========================================
-echo       --- Starting GravityChat v2.0 ---
+echo       --- Starting GravityChat v2.3.1 ---
 echo ==========================================
 echo.
 
@@ -34,7 +34,7 @@ if not defined CHROME_PATH (
     exit /b 1
 )
 
-echo [1/2] Launching App Mode...
+echo [1/3] Launching App Mode...
 if defined CHROME_PATH (
     echo       Found Chrome! Opening via Shortcut...
     
@@ -46,10 +46,22 @@ if defined CHROME_PATH (
 )
 
 echo [2/3] Starting Grok API Bridge...
-start /min "Grok API" cmd /c "cd Grok-Api-main && .\venv\Scripts\python api_server.py"
+if exist "Grok-Api-main\venv\Scripts\python.exe" (
+    if exist "Grok-Api-main\api_server.py" (
+        start /min "Grok API" cmd /c "cd Grok-Api-main && .\venv\Scripts\python api_server.py"
+    ) else (
+        echo       [WARN] api_server.py not found in Grok-Api-main\
+    )
+) else (
+    echo       [WARN] Grok venv not found. Grok models will be unavailable.
+)
 
 echo [3/3] Starting local Debug server...
 echo       Do not close this window while using the app!
 echo.
-python debug_server.py
+if exist "debug_server.py" (
+    python debug_server.py
+) else (
+    echo       [WARN] debug_server.py not found. Debug logging unavailable.
+)
 pause

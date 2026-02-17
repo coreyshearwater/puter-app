@@ -9,15 +9,13 @@
     <script>
         (function() {
             try {
-                const settings = JSON.parse(localStorage.getItem('gravitychat_settings') || '{}');
-                const theme = settings.theme || 'void';
-                const themeClass = 'theme-' + theme;
+                var settings = JSON.parse(localStorage.getItem('gravitychat_settings') || '{}');
+                var theme = settings.theme || 'void';
+                var themeClass = 'theme-' + theme;
                 document.documentElement.className = themeClass;
-                // Apply to body via observer or immediate check if ready
-                document.addEventListener('DOMContentLoaded', () => {
-                    document.body.className = themeClass;
-                });
-            } catch (e) {}
+            } catch (e) {
+                document.documentElement.className = 'theme-void';
+            }
         })();
     </script>
 
@@ -43,6 +41,35 @@
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body class="bg-void">
+    <!-- Loading overlay: shown instantly, removed after init completes -->
+    <div id="loading-overlay" style="
+        position: fixed; inset: 0; z-index: 9999;
+        background: var(--bg-void, #0a0a0f);
+        display: flex; align-items: center; justify-content: center;
+        transition: opacity 0.4s ease;
+    ">
+        <div style="text-align: center;">
+            <div style="
+                width: 40px; height: 40px; margin: 0 auto 16px;
+                border: 3px solid var(--glass-border, rgba(255,255,255,0.1));
+                border-top-color: var(--neon-primary, #00fff7);
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            "></div>
+            <div style="
+                font-family: 'Inter', sans-serif;
+                font-size: 13px;
+                color: var(--text-muted, #71717a);
+                letter-spacing: 0.05em;
+            ">Loading workspace...</div>
+        </div>
+    </div>
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* Hide app until state is loaded to prevent FOUC */
+        #app-container { opacity: 0; transition: opacity 0.3s ease; }
+        #app-container.ready { opacity: 1; }
+    </style>
     <div id="app-container">
         <!-- Sidebar -->
         <aside id="sidebar" class="p-4 flex flex-col h-full">

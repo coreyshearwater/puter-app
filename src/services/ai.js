@@ -19,6 +19,8 @@ const FREE_FALLBACK_CHAIN = [
     'gemini-2.5-flash-lite',
 ];
 
+const MAX_CONTEXT_MESSAGES = 20;
+
 // Send a message
 export async function sendMessage() {
     const input = document.getElementById('user-input');
@@ -109,8 +111,8 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
         });
 
         // Map history to Puter format
-        // OPTIMIZATION: Only send the last 20 messages to keep context window small and responses fast.
-        const recentMessages = AppState.messages.slice(-20);
+        // OPTIMIZATION: Only send recent messages to keep context window small and responses fast.
+        const recentMessages = AppState.messages.slice(-MAX_CONTEXT_MESSAGES);
         
         for (const msg of recentMessages) {
             if (msg.attachments?.length > 0) {
@@ -200,6 +202,24 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
         }
         
         aiMessageElement.innerHTML = renderMarkdown(fullText, false);
+
+        // Re-attach stop voice button if speech queue is still active (M6 fix)
+        // The innerHTML wipe above removes any stop button appended by queueSpeech.
+        // We re-inject it if autoSpeak was on and audio is likely still playing.
+        if (AppState.autoSpeak) {
+            import('./voice.js').then(({ stopSpeech }) => {
+                // Check if there's no stop button after the innerHTML wipe
+                if (!aiMessageElement.querySelector('.btn-stop-voice')) {
+                    const stopBtn = document.createElement('button');
+                    stopBtn.className = 'btn-stop-voice speaking';
+                    stopBtn.title = 'Stop reading out loud';
+                    stopBtn.innerHTML = `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>`;
+                    stopBtn.onclick = (e) => { e.stopPropagation(); stopSpeech(); };
+                    aiMessageElement.appendChild(stopBtn);
+                }
+            }).catch(() => {});
+        }
+
         AppState.messages.push({ role: 'assistant', content: fullText });
         
         // Persist final response
@@ -211,6 +231,14 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
     } catch (error) {
         console.error(`Model ${currentModel} failed:`, error);
         
+        // L10: If we have partial content from a mid-stream failure, preserve it
+        if (fullText && fullText.trim()) {
+            aiMessageElement.innerHTML = renderMarkdown(fullText, false) + '<div class="text-xs text-red-400 mt-2 italic">⚠️ Response was interrupted</div>';
+            AppState.messages.push({ role: 'assistant', content: fullText + '\n\n[Response interrupted]' });
+            syncCurrentSession();
+            saveStateToKV();
+        }
+        
         // Check for specific error types or message content
         const errorMsg = (error.message || JSON.stringify(error)).toLowerCase();
         
@@ -218,8 +246,9 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             errorMsg.includes('credit') || 
             errorMsg.includes('insufficient') ||
             errorMsg.includes('failed') || 
-            errorMsg.includes('error') || 
-            errorMsg.includes('unavailable');
+            errorMsg.includes('unavailable') ||
+            errorMsg.includes('rate_limit') ||
+            errorMsg.includes('model_not_found');
 
         if (isFallbackCandidate) {
             const nextModel = FREE_FALLBACK_CHAIN.find(id => !attemptedModels.includes(id));

@@ -72,7 +72,16 @@ export async function loadStateFromKV() {
         const settingsData = await puter.kv.get('gravitychat_settings');
         if (settingsData) {
             const settings = JSON.parse(settingsData);
-            Object.assign(AppState, settings); // Quickly populate state
+            // Whitelist: Only assign known safe keys to avoid corrupting runtime state
+            const SAFE_KEYS = [
+                'temperature', 'maxTokens', 'autoSpeak', 'selectedVoice',
+                'premiumEnabled', 'currentModel', 'theme', 'mediaParams',
+                'currentPath', 'allowEmojis', 'grokMenuExpanded', 'grokApiUrl',
+                'sessions', 'activeSessionId', 'oracularModes'
+            ];
+            for (const key of SAFE_KEYS) {
+                if (settings[key] !== undefined) AppState[key] = settings[key];
+            }
             
             // Re-apply if KV differs from local
             if (settings.theme) {

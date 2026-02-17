@@ -108,6 +108,9 @@ async function init() {
         const signedIn = await puter.auth.isSignedIn();
         if (!signedIn) {
             console.log('User not signed in. Showing Auth Overlay.');
+            // Dismiss loading overlay so auth screen is visible
+            const loadOverlay = document.getElementById('loading-overlay');
+            if (loadOverlay) { loadOverlay.style.opacity = '0'; setTimeout(() => loadOverlay.remove(), 400); }
             showAuthOverlay();
             return; // Stop init until signed in
         }
@@ -175,7 +178,6 @@ async function completeInit() {
     } catch (e) { console.error('State loading failed', e); }
     
     // UI Init
-    // UI Init
     try {
         console.log('Applying theme...');
         applyTheme();
@@ -217,6 +219,16 @@ async function completeInit() {
     } catch (e) { console.error('fetchModels failed', e); }
     
     console.log('GravityChat Ready!');
+
+    // Reveal app and remove loading overlay (prevents FOUC)
+    const appContainer = document.getElementById('app-container');
+    if (appContainer) appContainer.classList.add('ready');
+
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 400);
+    }
 }
 
 function setupGlobalListeners() {

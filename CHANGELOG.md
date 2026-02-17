@@ -2,6 +2,49 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.3.1] - "Hardened" - 2026-02-17
+
+### Security (Critical)
+
+- **Fixed**: XSS via modal title/message injection — all 3 modal functions now use `textContent` instead of raw `innerHTML`.
+- **Fixed**: XSS via toast messages — toast content now uses safe text injection.
+- **Fixed**: XSS via persona names — added HTML entity escaping in persona list rendering.
+
+### Bugs
+
+- **Fixed**: Dead code in `waitForAIIdle()` — removed unreachable duplicate `return true`.
+- **Fixed**: Half-duplex mic race condition — guarded all `startRecording()` calls with `!isSpeakingAudio` check.
+- **Fixed**: Voice stop button vanishing after streaming ends — button is re-injected after final `innerHTML` update.
+- **Fixed**: Overly broad fallback trigger — removed `errorMsg.includes('error')` which caught everything.
+- **Fixed**: Partial streaming recovery — mid-stream failures now preserve partial content instead of losing it.
+
+### Performance
+
+- **Fixed**: AudioContext memory leak — contexts are now tracked and explicitly closed on stop.
+- **Fixed**: ObjectURL memory leak in chat export — `URL.revokeObjectURL()` now called after download.
+
+### Code Quality
+
+- **Improved**: Replaced unsafe `Object.assign(AppState, settings)` with whitelist-only key assignment.
+- **Improved**: Extracted `MAX_CONTEXT_MESSAGES` constant (was magic number `-20`).
+- **Improved**: Extracted `INTENT_MODEL` constant for voice command parsing model.
+- **Improved**: Added `.catch()` to fire-and-forget `sendHiddenMessage` promises.
+- **Improved**: Disabled non-functional RUN buttons in code blocks (Puter V2 sandbox unavailable).
+- **Removed**: Duplicate comment in `completeInit`.
+- **Added**: Missing `showToast` import in `modals.js`.
+
+### UX/Accessibility
+
+- **Added**: Escape key support for all 3 modal types.
+- **Added**: `aria-label` on dynamically-created voice stop button.
+- **Added**: 2-second cooldown on voice commands to prevent API spam.
+- **Added**: Console log when DOM prunes old messages (>50 visible).
+- **Added**: Theme CSS variable documentation block in `main.css`.
+
+### Infrastructure
+
+- **Improved**: `start.bat` — added existence checks for Grok venv, api_server.py, and debug_server.py with warnings instead of silent failures. Fixed version display and step numbering.
+
 ## [v2.3.0] - "Voice Revolution" - 2026-02-17
 
 - **Added**: **Streaming TTS** — AI now speaks sentences in real-time as they are generated, drastically reducing perceived latency.

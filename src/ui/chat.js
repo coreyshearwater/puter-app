@@ -32,7 +32,10 @@ export function createAIMessageElement() {
     const container = document.getElementById('messages-container');
     if (!container) return null;
 
-    if (container.children.length > 50) container.removeChild(container.firstChild);
+    if (container.children.length > 50) {
+        container.removeChild(container.firstChild);
+        console.log('💬 DOM limit: oldest message bubble pruned (>50 visible)');
+    }
     
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble message-ai slide-in';
@@ -72,4 +75,5 @@ export function exportChat() {
     a.href = url;
     a.download = `chat_${Date.now()}.md`;
     a.click();
+    URL.revokeObjectURL(url);
 }

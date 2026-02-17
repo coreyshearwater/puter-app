@@ -14,14 +14,13 @@ async function waitForAIIdle(timeout = 5000) {
         await new Promise(r => setTimeout(r, 200));
     }
     return true;
-
-    return true;
 }
 
 let currentAudio = null; // Track active Cloud TTS
 let speechQueue = [];
 let isSpeakingAudio = false;
 let activeSpeakingBubble = null; // Track which bubble is currently speaking
+let activeAudioContext = null; // Track AudioContext to prevent leaks
 
 // Queue speech chunk
 export async function queueSpeech(text, bubble) {
@@ -34,6 +33,7 @@ export async function queueSpeech(text, bubble) {
             const stopBtn = document.createElement('button');
             stopBtn.className = 'btn-stop-voice speaking';
             stopBtn.title = 'Stop reading out loud';
+            stopBtn.setAttribute('aria-label', 'Stop voice playback');
             stopBtn.innerHTML = `
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="6" y="6" width="12" height="12" rx="1" />
@@ -302,7 +302,12 @@ export async function startRecording() {
         const micBtn = document.getElementById('btn-mic');
         micBtn.classList.add('btn-error', 'animate-pulse');
         
+        // Close any prior AudioContext to prevent leaks
+        if (activeAudioContext) {
+            try { activeAudioContext.close(); } catch (e) {}
+        }
         const audioContext = new AudioContext();
+        activeAudioContext = audioContext;
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
@@ -384,6 +389,11 @@ export function stopRecording() {
         if (AppState.audioStream) {
             AppState.audioStream.getTracks().forEach(track => track.stop());
         }
+        // Close AudioContext to free resources
+        if (activeAudioContext) {
+            try { activeAudioContext.close(); } catch (e) {}
+            activeAudioContext = null;
+        }
     }
 }
 
@@ -397,7 +407,7 @@ async function transcribeAudio(audioBlob) {
             // Check for semantic commands (e.g. "Computer, switch theme...")
             const isCommand = await processSemanticCommand(text);
             if (isCommand) {
-                if (AppState.isVoiceSession) setTimeout(() => startRecording(), 1000);
+                if (AppState.isVoiceSession && !isSpeakingAudio) setTimeout(() => startRecording(), 1000);
                 return;
             }
 
@@ -418,12 +428,12 @@ async function transcribeAudio(audioBlob) {
             showToast('No speech detected', 'warning');
         }
         
-        if (AppState.isVoiceSession) setTimeout(() => startRecording(), 200); // optimized restart
+        if (AppState.isVoiceSession && !isSpeakingAudio) setTimeout(() => startRecording(), 200); // optimized restart
         
     } catch (error) {
         console.error('Transcription error:', error);
         showToast(`Transcription failed`, 'error');
-        if (AppState.isVoiceSession) setTimeout(() => startRecording(), 1000);
+        if (AppState.isVoiceSession && !isSpeakingAudio) setTimeout(() => startRecording(), 1000);
     }
 }
 

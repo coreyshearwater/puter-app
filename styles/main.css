@@ -4,6 +4,31 @@
     --neon-orange: #ff9500;
 }
 
+/*
+ * THEME SYSTEM — Required CSS Custom Properties
+ * -----------------------------------------------
+ * Each .theme-{name} class MUST define ALL of the following variables.
+ * Missing variables will cause unstyled/invisible elements.
+ *
+ * BACKGROUNDS:
+ *   --bg-void       Main app background (darkest)
+ *   --bg-dark       Sidebar / secondary panels
+ *   --bg-elevated   Cards, elevated surfaces
+ *
+ * ACCENT COLORS:
+ *   --neon-primary   Primary neon accent (buttons, links, glow)
+ *   --neon-secondary Complementary accent (gradients, highlights)
+ *
+ * TEXT:
+ *   --text-bright   Primary text color
+ *   --text-muted    Secondary/dimmed text
+ *
+ * GLASS EFFECTS:
+ *   --glass-bg      Glassmorphism background (low-alpha)
+ *   --glass-border  Glassmorphism border (low-alpha)
+ *   --glow-shadow   Neon glow for shadows and focus rings
+ */
+
 .theme-void {
     --bg-void: #0a0a0f;
     --bg-dark: #12121a;

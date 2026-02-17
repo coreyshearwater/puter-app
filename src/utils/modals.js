@@ -1,3 +1,5 @@
+import { showToast } from './toast.js';
+
 export function showErrorModal(title, message) {
     // Backdrop
     const backdrop = document.createElement('div');
@@ -11,17 +13,19 @@ export function showErrorModal(title, message) {
 
     modal.innerHTML = `
         <div class="flex items-start justify-between mb-4">
-            <h3 class="text-xl font-bold text-magenta-400 tracking-tight">${title}</h3>
+            <h3 class="text-xl font-bold text-magenta-400 tracking-tight" id="modal-title"></h3>
             <button class="btn btn-sm btn-ghost btn-square text-gray-500 hover:text-white" id="close-modal-x">×</button>
         </div>
-        <div class="text-gray-300 text-sm leading-relaxed mb-6">
-            ${message}
-        </div>
+        <div class="text-gray-300 text-sm leading-relaxed mb-6" id="modal-message"></div>
         <div class="flex justify-end gap-3">
             <button class="btn btn-sm px-6 btn-outline border-gray-600 text-gray-400 hover:bg-gray-800" id="close-modal-btn">Dismiss</button>
             <button class="btn btn-sm px-6 btn-neon" id="retry-modal-btn" style="display: none;">Retry</button>
         </div>
     `;
+
+    // Safe text injection (XSS prevention)
+    modal.querySelector('#modal-title').textContent = title;
+    modal.querySelector('#modal-message').textContent = message;
 
     backdrop.appendChild(modal);
     document.body.appendChild(backdrop);
@@ -40,6 +44,9 @@ export function showErrorModal(title, message) {
         if (e.target === backdrop) closeHandler();
     };
 
+    const escHandler = (e) => { if (e.key === 'Escape') { closeHandler(); document.removeEventListener('keydown', escHandler); } };
+    document.addEventListener('keydown', escHandler);
+
     return { close: closeHandler };
 }
 
@@ -56,19 +63,19 @@ export function showCustomPersonaModal(existingName, existingPrompt, onSave) {
 
     modal.innerHTML = `
         <div class="flex items-start justify-between mb-4">
-            <h3 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent tracking-tight">Custom Persona</h3>
+            <h3 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent tracking-tight" id="cp-title"></h3>
             <button class="btn btn-sm btn-ghost btn-square text-gray-500 hover:text-white" id="close-cp-x">×</button>
         </div>
         
         <div class="space-y-4 mb-6">
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold tracking-wider">Persona Name</label>
-                <input type="text" id="cp-name" class="w-full mt-1 bg-black/20 border border-white/10 rounded p-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Rate My Code" value="${existingName || ''}">
+                <input type="text" id="cp-name" class="w-full mt-1 bg-black/20 border border-white/10 rounded p-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Rate My Code">
             </div>
             
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold tracking-wider">System Prompt</label>
-                <textarea id="cp-prompt" class="w-full mt-1 bg-black/20 border border-white/10 rounded p-2 text-sm text-gray-300 focus:border-cyan-500 outline-none h-32 resize-none" placeholder="You are a strict code reviewer...">${existingPrompt || ''}</textarea>
+                <textarea id="cp-prompt" class="w-full mt-1 bg-black/20 border border-white/10 rounded p-2 text-sm text-gray-300 focus:border-cyan-500 outline-none h-32 resize-none" placeholder="You are a strict code reviewer..."></textarea>
             </div>
         </div>
 
@@ -77,6 +84,12 @@ export function showCustomPersonaModal(existingName, existingPrompt, onSave) {
             <button class="btn btn-sm px-6 btn-neon" id="save-cp-btn">Save Persona</button>
         </div>
     `;
+
+    // Safe text injection
+    modal.querySelector('#cp-title').textContent = 'Custom Persona';
+    // Set values safely (not via attribute interpolation)
+    if (existingName) modal.querySelector('#cp-name').value = existingName;
+    if (existingPrompt) modal.querySelector('#cp-prompt').value = existingPrompt;
 
     backdrop.appendChild(modal);
     document.body.appendChild(backdrop);
@@ -102,10 +115,12 @@ export function showCustomPersonaModal(existingName, existingPrompt, onSave) {
     backdrop.querySelector('#close-cp-btn').onclick = closeHandler;
     backdrop.querySelector('#save-cp-btn').onclick = saveHandler;
     
-    // Close on backdrop click
     backdrop.onclick = (e) => {
         if (e.target === backdrop) closeHandler();
     };
+
+    const escHandler = (e) => { if (e.key === 'Escape') { closeHandler(); document.removeEventListener('keydown', escHandler); } };
+    document.addEventListener('keydown', escHandler);
 
     return { close: closeHandler };
 }
@@ -120,16 +135,18 @@ export function showConfirmModal(title, message, onConfirm) {
 
     modal.innerHTML = `
         <div class="mb-4">
-            <h3 class="text-xl font-bold text-orange-400 tracking-tight">${title}</h3>
+            <h3 class="text-xl font-bold text-orange-400 tracking-tight" id="confirm-title"></h3>
         </div>
-        <div class="text-gray-300 text-sm leading-relaxed mb-6">
-            ${message}
-        </div>
+        <div class="text-gray-300 text-sm leading-relaxed mb-6" id="confirm-message"></div>
         <div class="flex justify-end gap-3">
             <button class="btn btn-sm px-6 btn-outline border-gray-600 text-gray-400 hover:bg-gray-800" id="confirm-cancel">Cancel</button>
             <button class="btn btn-sm px-6 bg-orange-600 hover:bg-orange-500 text-white border-none" id="confirm-ok">Delete</button>
         </div>
     `;
+
+    // Safe text injection
+    modal.querySelector('#confirm-title').textContent = title;
+    modal.querySelector('#confirm-message').textContent = message;
 
     backdrop.appendChild(modal);
     document.body.appendChild(backdrop);
@@ -149,6 +166,9 @@ export function showConfirmModal(title, message, onConfirm) {
     backdrop.onclick = (e) => {
         if (e.target === backdrop) closeHandler();
     };
+
+    const escHandler = (e) => { if (e.key === 'Escape') { closeHandler(); document.removeEventListener('keydown', escHandler); } };
+    document.addEventListener('keydown', escHandler);
 }
 
 

@@ -12,9 +12,10 @@ export function showToast(message, type = 'info') {
     
     toast.innerHTML = `
         <div>
-            <span>${icons[type] || ''} ${message}</span>
+            <span id="toast-msg"></span>
         </div>
     `;
+    toast.querySelector('#toast-msg').textContent = `${icons[type] || ''} ${message}`;
     
     document.body.appendChild(toast);
     

@@ -50,6 +50,9 @@ export function renderPersonasList() {
     const list = document.getElementById('personas-list');
     if (!list) return;
 
+    // Helper to escape HTML entities for safe innerHTML injection
+    const esc = (str) => str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
     // 1. Default Option (No Persona)
     const isDefaultActive = !AppState.activePersona;
     let html = `
@@ -72,8 +75,8 @@ export function renderPersonasList() {
                  onclick="window.gravityChat.selectPersona('${persona.id}')">
                 <div class="flex items-start justify-between">
                     <div class="flex items-center gap-2">
-                        <div class="w-2.5 h-2.5 rounded-full" style="background: ${persona.color}; box-shadow: 0 0 10px ${persona.color};"></div>
-                        <span class="font-semibold text-xs text-gray-200">${persona.name}</span>
+                        <div class="w-2.5 h-2.5 rounded-full" style="background: ${esc(persona.color)}; box-shadow: 0 0 10px ${esc(persona.color)};"></div>
+                        <span class="font-semibold text-xs text-gray-200">${esc(persona.name)}</span>
                     </div>
                     
                     <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -105,7 +108,7 @@ export function selectPersona(personaId) {
         saveStateToKV();
         
         // Notify AI with consolidated command
-        import('../../services/ai.js').then(m => m.sendHiddenMessage(dc));
+        import('../../services/ai.js').then(m => m.sendHiddenMessage(dc)).catch(e => console.error('Hidden message failed:', e));
         return;
     }
 
@@ -131,7 +134,7 @@ export function selectPersona(personaId) {
         saveStateToKV();
 
         // Notify AI with a SINGLE consolidated command to avoid "System busy" race conditions
-        import('../../services/ai.js').then(m => m.sendHiddenMessage(command));
+        import('../../services/ai.js').then(m => m.sendHiddenMessage(command)).catch(e => console.error('Hidden message failed:', e));
     }
 }
 

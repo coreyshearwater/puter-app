@@ -37,12 +37,11 @@ export function renderMarkdown(text, skipHighlight = false) {
             
             if (isExecutable) {
                 pre.style.position = 'relative';
-                // Add execution button (using a data attribute for delegation or global access)
-                const codeText = codeElement.innerText.replace(/'/g, "\\'");
-                const btnHtml = `<button class="btn btn-xs btn-primary btn-run-code" 
-                                   style="position: absolute; top: 0.5rem; right: 0.5rem; font-size: 8px; height: 1.5rem; min-height: 1.5rem;"
-                                   onclick="window.gravityChat.runCodeBlock(this, '${lang}')">▶ RUN</button>`;
-                pre.insertAdjacentHTML('beforeend', btnHtml);
+                // NOTE: Code execution is currently unavailable in Puter.js V2.
+                // RUN buttons are disabled until puter.workers.run API is supported.
+                // const codeText = codeElement.innerText.replace(/'/g, "\\'");
+                // const btnHtml = `<button ...>▶ RUN</button>`;
+                // pre.insertAdjacentHTML('beforeend', btnHtml);
             }
         }
     });

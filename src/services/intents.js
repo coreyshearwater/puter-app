@@ -9,12 +9,23 @@ import { showToast } from '../utils/toast.js';
  * Checks if a transcription is a system command and executes it.
  * Commands must start with "Computer", "Gravity", or "Hey Gravity".
  */
+let lastCommandTime = 0;
+const COMMAND_COOLDOWN_MS = 2000;
+
 export async function processSemanticCommand(transcription) {
     const normalized = transcription.trim().toLowerCase();
     const triggers = ['computer', 'gravity', 'hey gravity'];
     
     const triggerUsed = triggers.find(t => normalized.startsWith(t));
     if (!triggerUsed) return false;
+
+    // L11: Rate limit voice commands to prevent API spamming
+    const now = Date.now();
+    if (now - lastCommandTime < COMMAND_COOLDOWN_MS) {
+        showToast('Command cooldown — try again', 'warning');
+        return true; // Return true to prevent sending as chat message
+    }
+    lastCommandTime = now;
 
     showToast('Voice Command Detected...', 'info');
 
@@ -35,10 +46,13 @@ export async function processSemanticCommand(transcription) {
         Respond ONLY with a JSON object: {"action": "string", "value": "string"}
         If no action matches or if requested action is dangerous, respond: {"action": "none"}`;
 
+        // Uses a cheap/fast model for intent parsing (not the user's selected model)
+        const INTENT_MODEL = 'gpt-4o-mini';
+        
         const response = await puter.ai.chat([
             { role: 'system', content: systemPrompt },
             { role: 'user', content: `Command: ${commandText}` }
-        ], { model: 'gpt-4o-mini', temperature: 0, stream: false });
+        ], { model: INTENT_MODEL, temperature: 0, stream: false });
 
         const data = JSON.parse(response.message.content);
         
