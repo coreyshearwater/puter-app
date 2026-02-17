@@ -203,23 +203,6 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
         
         aiMessageElement.innerHTML = renderMarkdown(fullText, false);
 
-        // Re-attach stop voice button if speech queue is still active (M6 fix)
-        // The innerHTML wipe above removes any stop button appended by queueSpeech.
-        // We re-inject it if autoSpeak was on and audio is likely still playing.
-        if (AppState.autoSpeak) {
-            import('./voice.js').then(({ stopSpeech }) => {
-                // Check if there's no stop button after the innerHTML wipe
-                if (!aiMessageElement.querySelector('.btn-stop-voice')) {
-                    const stopBtn = document.createElement('button');
-                    stopBtn.className = 'btn-stop-voice speaking';
-                    stopBtn.title = 'Stop reading out loud';
-                    stopBtn.innerHTML = `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>`;
-                    stopBtn.onclick = (e) => { e.stopPropagation(); stopSpeech(); };
-                    aiMessageElement.appendChild(stopBtn);
-                }
-            }).catch(() => {});
-        }
-
         AppState.messages.push({ role: 'assistant', content: fullText });
         
         // Persist final response

@@ -2,6 +2,12 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.3.2] - "Polished" - 2026-02-17
+
+- **Moved**: Voice stop button from AI message bubble corner → send button. When AI speaks, send button transforms into a pulsing red stop with tooltip.
+- **Added**: Hover tooltip ("Stop AI voice") on the stop button using CSS `::after` pseudo-element.
+- **Added**: Loading overlay to prevent FOUC — theme, persona, and chats now load behind a spinner before the app reveals.
+
 ## [v2.3.1] - "Hardened" - 2026-02-17
 
 ### Security (Critical)

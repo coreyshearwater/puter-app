@@ -1,6 +1,6 @@
 import { AppState } from '../state.js';
 import { sendMessage } from '../services/ai.js';
-import { toggleVoiceSession } from '../services/voice.js';
+import { toggleVoiceSession, stopSpeech } from '../services/voice.js';
 
 export function setupInputListeners() {
     const userInput = document.getElementById('user-input');
@@ -9,7 +9,13 @@ export function setupInputListeners() {
     const attachBtn = document.getElementById('btn-attach');
     const fileInput = document.getElementById('file-input');
 
-    sendBtn.onclick = () => sendMessage();
+    sendBtn.onclick = () => {
+        if (sendBtn.dataset.mode === 'stop') {
+            stopSpeech();
+        } else {
+            sendMessage();
+        }
+    };
     
     userInput.onkeydown = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {

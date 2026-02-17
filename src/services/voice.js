@@ -23,28 +23,35 @@ let activeSpeakingBubble = null; // Track which bubble is currently speaking
 let activeAudioContext = null; // Track AudioContext to prevent leaks
 
 // Queue speech chunk
+// Store original send button innerHTML for restoration
+let originalSendBtnHTML = null;
+
+// Transform #btn-send into stop mode or restore it
+function setSendButtonSpeaking(isSpeaking) {
+    const btn = document.getElementById('btn-send');
+    if (!btn) return;
+
+    if (isSpeaking) {
+        if (!originalSendBtnHTML) originalSendBtnHTML = btn.innerHTML;
+        btn.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>`;
+        btn.classList.add('btn-speaking');
+        btn.setAttribute('aria-label', 'Stop voice playback');
+        btn.dataset.mode = 'stop';
+    } else {
+        if (originalSendBtnHTML) btn.innerHTML = originalSendBtnHTML;
+        btn.classList.remove('btn-speaking');
+        btn.setAttribute('aria-label', 'Send');
+        btn.dataset.mode = 'send';
+    }
+}
+
 export async function queueSpeech(text, bubble) {
     if (!text || !text.trim()) return;
     
-    // Track the bubble and add stop button immediately on first chunk
+    // Transform send button into stop button on first chunk
     if (speechQueue.length === 0) {
         activeSpeakingBubble = bubble;
-        if (bubble && !bubble.querySelector('.btn-stop-voice')) {
-            const stopBtn = document.createElement('button');
-            stopBtn.className = 'btn-stop-voice speaking';
-            stopBtn.title = 'Stop reading out loud';
-            stopBtn.setAttribute('aria-label', 'Stop voice playback');
-            stopBtn.innerHTML = `
-                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="6" width="12" height="12" rx="1" />
-                </svg>
-            `;
-            stopBtn.onclick = (e) => {
-                e.stopPropagation();
-                stopSpeech();
-            };
-            bubble.appendChild(stopBtn);
-        }
+        setSendButtonSpeaking(true);
     }
     
     speechQueue.push({ text, bubble });
@@ -55,6 +62,7 @@ async function processSpeechQueue() {
     if (speechQueue.length === 0) {
         isSpeakingAudio = false;
         activeSpeakingBubble = null;
+        setSendButtonSpeaking(false);
         // Resume recording if in voice session
         if (AppState.isVoiceSession && !AppState.isRecording) {
             console.log('🎙️ Resuming recording after speech...');
@@ -163,30 +171,10 @@ export async function speakText(text, bubble, isInternal = false) {
     
     if (!cleanText) return;
 
-    // Stop button is now added in queueSpeech for instant visibility
-    // Only add here if called directly (not from queue)
-    let stopBtn = null;
-    if (bubble && !isInternal && !bubble.querySelector('.btn-stop-voice')) {
-        stopBtn = document.createElement('button');
-        stopBtn.className = 'btn-stop-voice speaking';
-        stopBtn.title = 'Stop reading out loud';
-        stopBtn.innerHTML = `
-            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="6" width="12" height="12" rx="1" />
-            </svg>
-        `;
-        stopBtn.onclick = (e) => {
-            e.stopPropagation();
-            stopSpeech();
-        };
-        bubble.appendChild(stopBtn);
-    }
+    // Stop button is now on #btn-send, not on the bubble
+    // No per-bubble stop button creation needed
 
     const cleanup = () => {
-        // Only remove button if it's on the active speaking bubble
-        if (stopBtn && stopBtn.parentNode && bubble === activeSpeakingBubble) {
-            stopBtn.remove();
-        }
         currentAudio = null;
     };
 
@@ -276,11 +264,8 @@ export function stopSpeech() {
         window.speechSynthesis.cancel();
     }
 
-    // Remove stop button only from active bubble
-    if (activeSpeakingBubble) {
-        const btn = activeSpeakingBubble.querySelector('.btn-stop-voice');
-        if (btn) btn.remove();
-    }
+    // Restore send button
+    setSendButtonSpeaking(false);
     
     // Clear Queue
     speechQueue = [];

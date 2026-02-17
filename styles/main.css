@@ -224,42 +224,52 @@ input:focus {
 .streaming-cursor::after { content: '▊'; animation: blink 1s infinite; color: var(--neon-primary); }
 @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
 
-/* Voice Stop Button */
-.btn-stop-voice {
+/* Send Button → Stop Mode */
+#btn-send.btn-speaking {
+    background: linear-gradient(135deg, #ff3b5c, #ff1744) !important;
+    border-color: #ff1744 !important;
+    box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.5);
+    animation: pulse-stop 1.8s infinite ease-in-out;
+    position: relative;
+}
+
+#btn-send.btn-speaking:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 16px rgba(255, 23, 68, 0.6);
+}
+
+/* Tooltip on hover */
+#btn-send.btn-speaking::after {
+    content: 'Stop AI voice';
     position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--glass-border);
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+    background: rgba(10, 10, 15, 0.95);
+    color: var(--text-bright);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 10px;
     border-radius: 6px;
-    color: var(--neon-primary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    z-index: 10;
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    border: 1px solid var(--glass-border);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-.btn-stop-voice:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.1);
-    border-color: var(--neon-primary);
-    box-shadow: 0 0 10px var(--glow-shadow);
+#btn-send.btn-speaking:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
 }
 
-.btn-stop-voice.speaking {
-    animation: pulse-cyan 2s infinite;
-}
-
-@keyframes pulse-cyan {
-    0% { box-shadow: 0 0 0 0 rgba(0, 255, 247, 0.4); }
-    70% { box-shadow: 0 0 0 8px rgba(0, 255, 247, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(0, 255, 247, 0); }
+@keyframes pulse-stop {
+    0% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.5); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 23, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0); }
 }
 
 /* Nav Tabs */
