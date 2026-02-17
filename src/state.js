@@ -267,6 +267,7 @@ export const AppState = {
     grokProxy: null,
     grokApiUrl: 'http://127.0.0.1:6969/ask',
     grokConversationData: null,
+    grokCookies: { sso: '', 'sso-rw': '' },
     grokMenuExpanded: false,
     allowEmojis: false,
     projectIndex: null,

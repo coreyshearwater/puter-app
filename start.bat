@@ -1,13 +1,14 @@
 @echo off
 title GravityChat Server
 echo ==========================================
-echo       --- Starting GravityChat v2.4.0 ---
+echo       --- Starting GravityChat v2.4.1 ---
+echo         [ Grok 4.20 / Expert Mode ]
 echo ==========================================
 echo.
 
 :: Kill potential zombies from failed exe
 taskkill /F /IM GravityChat.exe >nul 2>&1
-taskkill /F /IM python.exe >nul 2>&1
+:: taskkill /F /IM python.exe >nul 2>&1
 
 :: STRICT PORTABLE MODE
 set "CHROME_PATH="
@@ -36,7 +37,7 @@ if not defined CHROME_PATH (
 
 echo [1/4] Starting Grok API Bridge...
 if exist "Grok-Api-main\venv\Scripts\python.exe" (
-    powershell -Command "Start-Process 'Grok-Api-main\venv\Scripts\python.exe' -ArgumentList 'Grok-Api-main\api_server.py' -NoNewWindow"
+    powershell -Command "Start-Process 'Grok-Api-main\venv\Scripts\python.exe' -ArgumentList 'api_server.py' -WorkingDirectory 'Grok-Api-main' -NoNewWindow"
     echo       [OK] Grok Bridge starting in background...
 ) else (
     echo       [WARN] Grok venv not found.

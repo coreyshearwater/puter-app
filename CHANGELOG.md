@@ -2,6 +2,17 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.4.1] - "Session Stability" - 2026-02-17
+
+### Added
+
+- **Grok Bridge**: Official support for **manual cookie injection** in `api_server.py`. Allows bypassing anti-bot measures on Grok 4.20 by using established browser sessions.
+
+### Fixed
+
+- **Grok Bridge**: Stabilized internal mapping paths in `core/reverse/parser.py` using absolute path resolution, fixing `Errno 2` (File Not Found) errors.
+- **Environment**: Standardized bridge execution within the dedicated `Grok-Api-main/venv`.
+
 ## [v2.4.0] - "Live Roster" - 2026-02-17
 
 ### Added

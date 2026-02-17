@@ -15,8 +15,14 @@ export async function askGrok(message, model = 'grok-3-auto', stream = false, te
             stream: stream,
             temperature: temperature
         };
+        
         if (AppState.grokProxy) requestBody.proxy = AppState.grokProxy;
         if (AppState.grokConversationData) requestBody.extra_data = AppState.grokConversationData;
+        
+        // Auto-inject persistent session cookies if present
+        if (AppState.grokCookies && (AppState.grokCookies.sso || AppState.grokCookies['sso-rw'])) {
+            requestBody.cookies = AppState.grokCookies;
+        }
 
         const response = await fetch(url, {
             method: 'POST',

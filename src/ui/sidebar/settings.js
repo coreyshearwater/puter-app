@@ -28,6 +28,36 @@ export function renderSettings() {
         </div>
         <div class="divider"></div>
         <div>
+            <label class="text-sm font-semibold mb-2 block">Grok Automation</label>
+            <p class="text-[10px] text-gray-400 mb-3 italic leading-tight">
+                Grok 4.20 requires a valid session. Log in once via the app browser to enable zero-touch automation.
+            </p>
+            <div class="space-y-3">
+                <button id="btn-grok-login" onclick="window.open('https://grok.com', '_blank')" class="btn btn-xs btn-neon w-full" title="Open Grok in bundled browser to authenticate">
+                    🔑 Authenticate in Browser
+                </button>
+                
+                <div class="collapse collapse-arrow bg-black/20 rounded-lg">
+                    <input type="checkbox" id="grok-advanced-toggle" class="peer" /> 
+                    <div class="collapse-title text-[10px] font-bold py-2 min-h-0 text-gray-400">
+                        ADVANCED (MANUAL)
+                    </div>
+                    <div class="collapse-content space-y-2 !pb-3">
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="grok-sso" placeholder="sso" value="${AppState.grokCookies?.sso || ''}" 
+                                   class="input input-bordered input-xs flex-1 font-mono text-[10px]" />
+                            <input type="text" id="grok-sso-rw" placeholder="sso-rw" value="${AppState.grokCookies?.['sso-rw'] || ''}" 
+                                   class="input input-bordered input-xs flex-1 font-mono text-[10px]" />
+                        </div>
+                        <button id="btn-magic-paste-cookies" class="btn btn-xs btn-outline border-fuchsia-500/30 text-fuchsia-400 w-full" title="Parse raw cookies from clipboard">
+                            ✨ Magic Paste
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="divider"></div>
+        <div>
             <label class="text-sm font-semibold mb-2 block">Voice Settings</label>
             <label class="flex items-center justify-between p-3 glass-card cursor-pointer mb-3">
                 <span class="text-sm">Auto-speak responses</span>
@@ -172,4 +202,51 @@ function setupSettingsListeners() {
     document.getElementById('btn-export-chat').onclick = () => window.gravityChat.exportChat();
     document.getElementById('btn-clear-chat').onclick = () => window.gravityChat.clearChat();
     document.getElementById('btn-browse-voices').onclick = () => window.gravityChat.openVoiceBrowser();
+
+    // Grok Cookie Listeners
+    const ssoInput = document.getElementById('grok-sso');
+    const ssoRwInput = document.getElementById('grok-sso-rw');
+    
+    if (ssoInput && ssoRwInput) {
+        const saveGrokCookies = () => {
+            AppState.grokCookies = {
+                sso: ssoInput.value.trim(),
+                'sso-rw': ssoRwInput.value.trim()
+            };
+            saveStateToKV();
+        };
+
+        ssoInput.oninput = saveGrokCookies;
+        ssoRwInput.oninput = saveGrokCookies;
+
+        const magicPasteBtn = document.getElementById('btn-magic-paste-cookies');
+        if (magicPasteBtn) {
+            magicPasteBtn.onclick = async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    const ssoMatch = text.match(/sso=([^;]+)/);
+                    const ssoRwMatch = text.match(/sso-rw=([^;]+)/);
+                    
+                    let found = false;
+                    if (ssoMatch) {
+                        ssoInput.value = ssoMatch[1];
+                        found = true;
+                    }
+                    if (ssoRwMatch) {
+                        ssoRwInput.value = ssoRwMatch[1];
+                        found = true;
+                    }
+                    
+                    if (found) {
+                        saveGrokCookies();
+                        showToast('Cookies extracted and applied!', 'success');
+                    } else {
+                        showToast('No Grok cookies found in clipboard', 'warning');
+                    }
+                } catch (e) {
+                    showToast('Clipboard access denied', 'error');
+                }
+            };
+        }
+    }
 }
