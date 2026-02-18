@@ -3,7 +3,40 @@ import { updateElementText } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 import { showInfoModal } from '../../utils/modals.js';
 import { updateTemperatureVisibility } from './settings.js';
+import { ModelsUI } from './models-ui.js';
+import { 
+    checkLocalServerStatus, 
+    listLocalModels, 
+    loadLocalModel, 
+    unloadLocalModel, 
+    deleteLocalModel,
+    getSystemInfo,
+    searchHF
+} from '../../services/local-llm.js';
 
+// --- Polling & Init ---
+setInterval(async () => {
+    if (AppState.useLocalModel) {
+        const status = await checkLocalServerStatus();
+        AppState.localServerOnline = status.online;
+        AppState.localModelLoaded = status.model;
+        
+        // Refresh valid model list occasionally to catch external file changes
+        // but not too often to flicker UI, and NEVER if we are in search mode (it clears results)
+        if (AppState.localServerOnline && Math.random() < 0.1 && AppState.localTab !== 'search') {
+            renderModelList();
+        } else {
+            // Minimal update (just status dot)
+            const statusEl = document.getElementById('local-status-dot');
+            if (statusEl) statusEl.className = `w-2 h-2 rounded-full ${status.online ? 'bg-emerald-400 shadow-[0_0_10px_#34d399] ring-2 ring-emerald-500/20' : 'bg-red-500'} animate-pulse`;
+        }
+    }
+}, 5000);
+
+// Hardware Profile Cache
+let HardwareProfile = null;
+
+// --- Main Fetch ---
 export async function fetchModels() {
     try {
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
@@ -15,44 +48,119 @@ export async function fetchModels() {
             { id: 'grok-3-fast', name: 'Grok 3 (Fast)', cost: { input: 0, output: 0 }, provider: 'xAI' },
             { id: 'grok-4', name: 'Grok 4 (Expert)', cost: { input: 0, output: 0 }, provider: 'xAI' },
             { id: 'grok-4-mini-thinking-tahoe', name: 'Grok 4 Mini (Thinking)', cost: { input: 0, output: 0 }, provider: 'xAI' },
-            { id: 'grok-4-20', name: 'Grok 4.20 (Beta)', cost: { input: 0, output: 0 }, provider: 'xAI' },
         ];
         
         AppState.allModels = [...grokModels, ...models];
         AppState.freeModels = AppState.allModels.filter(m => m.id.endsWith(':free') || m.provider === 'xAI' || (m.cost?.input === 0 && m.cost?.output === 0));
+        
+        // Initial Local Check
+        const localStatus = await checkLocalServerStatus();
+        AppState.localServerOnline = localStatus.online;
+        AppState.localModelLoaded = localStatus.model;
+        
+        // Init Hardware
+        await initHardwareDetection();
+
     } catch (error) {
         console.error('Fetch models failed, using fallbacks');
-        AppState.allModels = [
-            { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B (Free)', cost: { input: 0, output: 0 } },
-            { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', cost: { input: 0, output: 0 } }
-        ];
-        AppState.freeModels = AppState.allModels.filter(m => m.cost.input === 0);
+        AppState.allModels = [{ id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: { input: 0, output: 0 } }];
+        AppState.freeModels = AppState.allModels;
     } finally {
         updateCurrentModelDisplay();
         renderModelList();
     }
 }
 
-export function renderModelList(searchQuery = '') {
+// --- Hardware Detection ---
+async function initHardwareDetection() {
+    if (HardwareProfile) return;
+
+    // 1. Try Backend Info first (more reliable for RAM/CPU)
+    const backendInfo = await getSystemInfo();
+    
+    // 2. Client side fallbacks
+    const cores = navigator.hardwareConcurrency || 4;
+    const gbRAM = backendInfo?.ram_gb || (navigator.deviceMemory || 8); // approximate
+    
+    // 3. User VRAM Estimation (Quadro P2000 = 4GB, or user rule)
+    // We check KV first
+    let vram = await puter.kv.get('user_hardware_vram');
+    if (!vram) {
+        // Simple heuristic or default to 4GB as per user context
+        // If the user has a specific GPU, we might try to guess webgl, but simpler to default safe.
+        vram = 4; // Safe default for "low spec" local llm
+    }
+
+    HardwareProfile = {
+        cpuCores: cores,
+        sysRAM: gbRAM,
+        vram: vram,
+        adapter: "Simulated / Backend"
+    };
+
+    console.info("Hardware Profile:", HardwareProfile);
+}
+
+// --- Render Logic ---
+
+export async function renderModelList(searchQuery = '') {
     const list = document.getElementById('model-list');
     if (!list) return;
 
-    const available = AppState.premiumEnabled ? AppState.allModels : AppState.freeModels;
+    if (AppState.useLocalModel) {
+        await renderLocalModelManager(list, searchQuery);
+    } else {
+        renderCloudModelList(list, searchQuery);
+    }
+}
+
+// --- LOCAL MANAGER UI ---
+
+async function renderLocalModelManager(container, searchQuery) {
+    const online = AppState.localServerOnline;
+    const loadedModel = AppState.localModelLoaded;
     
-    // Split available models into Grok and non-Grok
+    // Fetch local models if tab is 'files' or undefined
+    let localModels = [];
+    if (!AppState.localTab || AppState.localTab === 'files') {
+        localModels = await listLocalModels();
+    }
+
+    // Use shared UI renderer
+    container.innerHTML = ModelsUI.renderLocalModelManager(
+        container, 
+        online, 
+        loadedModel, 
+        localModels, 
+        AppState.localTab
+    );
+    
+    // Auto-trigger search logical connection if needed
+    if (AppState.localTab === 'search') {
+        // Handled by ModelsUI via performHFSearch call
+         const input = document.getElementById('hf-search-input');
+         if(input && AppState.hfSearchQuery) {
+             // restore cursor or value if re-rendering
+         } else {
+             setTimeout(() => window.gravityChat.performHFSearch(AppState.hfSearchQuery), 100);
+         }
+    }
+}
+
+function renderCloudModelList(container, searchQuery) {
+    const available = AppState.premiumEnabled ? AppState.allModels : AppState.freeModels;
     const grokModels = available.filter(m => m.provider === 'xAI');
     const otherModels = available.filter(m => m.provider !== 'xAI');
     
-    // Apply search filter to both
     const filterFn = m => (m.id + (m.name || '')).toLowerCase().includes(searchQuery.toLowerCase());
     const filteredGrok = searchQuery ? grokModels.filter(filterFn) : grokModels;
     const filteredOther = searchQuery ? otherModels.filter(filterFn) : otherModels;
 
+    // Use shared UI renderer (Basic concat for now, or adapt ModelsUI to handle cloud lists fully)
     let html = '';
 
     // Render Grok Category Toggle
     if (filteredGrok.length > 0) {
-        const isCurrentModelGrok = AppState.currentModel.startsWith('grok-');
         html += `
             <div class="mb-2">
                 <div class="glass-card p-2 cursor-pointer flex justify-between items-center bg-cyan-900/10 border-cyan-500/30 hover:bg-cyan-900/20" 
@@ -62,92 +170,20 @@ export function renderModelList(searchQuery = '') {
                 </div>
                 
                 <div id="grok-submenu" class="mt-1 space-y-1 pl-2 border-l border-cyan-500/20 ${AppState.grokMenuExpanded || searchQuery ? '' : 'hidden'}">
-                    ${filteredGrok.map(model => renderModelItem(model)).join('')}
+                    ${ModelsUI.renderCloudModelList(filteredGrok)} 
                 </div>
             </div>
         `;
     }
 
-    // Render Other Models — sorted by quality (best first) when showing free models
-    const sortedOther = [...filteredOther].sort((a, b) => getModelQuality(b.id) - getModelQuality(a.id));
-    html += sortedOther.map(model => renderModelItem(model)).join('');
+    const sortedOther = [...filteredOther].sort((a, b) => {
+        // simple sort by ID length heuristic as proxy for quality if no metadata
+        return b.id.length - a.id.length; 
+    });
     
-    list.innerHTML = html;
-}
-
-function renderModelItem(model) {
-    const isFree = model.id.endsWith(':free') || (model.cost?.input === 0);
-    const isSelected = model.id === AppState.currentModel;
-    const quality = getModelQuality(model.id);
-    const tier = quality >= 90 ? 'S' : quality >= 70 ? 'A' : quality >= 50 ? 'B' : 'C';
-    const tierColor = { S: 'text-emerald-400 bg-emerald-500/15', A: 'text-cyan-400 bg-cyan-500/15', B: 'text-amber-400 bg-amber-500/15', C: 'text-gray-400 bg-gray-500/15' }[tier];
-    return `
-        <div class="model-item glass-card p-2 cursor-pointer hover:bg-opacity-20 transition ${isSelected ? 'ring-1 ring-cyan-400 bg-cyan-400/5' : ''}" 
-             onclick="window.gravityChat.selectModel('${model.id}')">
-            <div class="flex justify-between items-start gap-1 overflow-hidden">
-                <div class="flex-1 min-w-0">
-                    <div class="text-xs font-semibold truncate" title="${model.name || model.id}">${model.name || model.id}</div>
-                    <div class="text-[9px] text-gray-500 font-mono truncate opacity-70">${model.id}</div>
-                </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
-                    <span class="text-[8px] px-1 rounded font-bold ${tierColor}" title="Quality tier">${tier}</span>
-                    <span class="text-[8px] px-1 rounded ${isFree ? 'bg-cyan-500/20 text-cyan-400' : 'bg-orange-500/20 text-orange-400'}">${isFree ? 'FREE' : 'PAID'}</span>
-                </div>
-            </div>
-        </div>`;
-}
-
-// Quality rankings for free models (higher = better)
-// Based on real-world benchmarks, parameter count, and reliability
-function getModelQuality(id) {
-    const lower = id.toLowerCase();
+    html += ModelsUI.renderCloudModelList(sortedOther);
     
-    // Tier S (90-100): Best-in-class free models
-    const tierS = [
-        ['gpt-4o-mini', 98],
-        ['gpt-5-nano', 96],
-        ['claude-3-5-haiku', 95], ['claude-3.5-haiku', 95],
-        ['deepseek-r1', 93], ['deepseek/deepseek-r1', 93],
-        ['deepseek-v3', 91], ['deepseek/deepseek-v3', 91],
-        ['gemini-2.0-flash', 90], ['gemini-flash', 90],
-    ];
-    
-    // Tier A (70-89): Strong capable models
-    const tierA = [
-        ['qwen/qwen3', 85], ['qwen3-', 85], ['qwen-2.5', 83],
-        ['llama-3.1-70b', 82], ['llama-3.3-70b', 82],
-        ['mistral-large', 80], ['mistral-nemo', 78],
-        ['gemma-2-27b', 77], ['gemma-3-27b', 77],
-        ['command-r', 75], ['command-r-plus', 78],
-        ['phi-4', 74], ['phi-3-medium', 73],
-        ['llama-3.1-8b', 72],
-    ];
-    
-    // Tier B (50-69): Decent but limited
-    const tierB = [
-        ['gemma-2-9b', 65], ['gemma-3-12b', 67],
-        ['mistral-7b', 60],
-        ['llama-3.2', 58],
-        ['phi-3-mini', 55],
-        ['yi-', 53],
-    ];
-
-    // Check all tiers
-    for (const [pattern, score] of [...tierS, ...tierA, ...tierB]) {
-        if (lower.includes(pattern)) return score;
-    }
-    
-    // Provider-based fallback scoring
-    if (lower.includes('openai') || lower.includes('gpt')) return 85;
-    if (lower.includes('anthropic') || lower.includes('claude')) return 83;
-    if (lower.includes('google') || lower.includes('gemini')) return 75;
-    if (lower.includes('meta-llama') || lower.includes('llama')) return 65;
-    if (lower.includes('mistral')) return 62;
-    if (lower.includes('microsoft') || lower.includes('phi-')) return 60;
-    if (lower.includes('deepseek')) return 70;
-    if (lower.includes('qwen')) return 68;
-
-    return 40; // Unknown models ranked lowest
+    container.innerHTML = html;
 }
 
 export function toggleGrokMenu() {
@@ -162,8 +198,7 @@ export async function selectModel(modelId) {
     updateTemperatureVisibility();
     showToast(`Model: ${modelId}`, 'success');
 
-    // "Pre-flight" check: Verify the model is actually online
-    // This is informational only — don't auto-switch, let actual chat handle fallback
+    // "Pre-flight" check
     try {
         const model = AppState.allModels.find(m => m.id === modelId);
         const isGrok = model?.provider === 'xAI';
@@ -177,12 +212,15 @@ export async function selectModel(modelId) {
             ]);
         }
     } catch (error) {
-        // Just log — don't auto-switch. The actual chat call has robust fallback logic.
         console.warn(`Model ${modelId} health check failed:`, error?.message || error);
     }
 }
 
 export function updateCurrentModelDisplay() {
+    if (AppState.useLocalModel) {
+        updateElementText('current-model-display', AppState.localModelLoaded || 'NO LOCAL MODEL');
+        return;
+    }
     const model = AppState.allModels.find(m => m.id === AppState.currentModel);
     const displayName = model ? (model.name || model.id) : AppState.currentModel;
     updateElementText('current-model-display', displayName);
@@ -197,12 +235,17 @@ export async function refreshModels() {
     if (btn) btn.disabled = true;
     
     try {
+        // If Local Mode, refresh local list
+        if (AppState.useLocalModel) {
+            await renderModelList();
+            showToast('Refreshed local & storage', 'success');
+            return;
+        }
+
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000));
         const models = await Promise.race([puter.ai.listModels(), timeout]);
         
-        // Preserve Grok models (hardcoded, different routing)
         const grokModels = AppState.allModels.filter(m => m.provider === 'xAI');
-        
         AppState.allModels = [...grokModels, ...models];
         AppState.freeModels = AppState.allModels.filter(m => 
             m.id.endsWith(':free') || m.provider === 'xAI' || (m.cost?.input === 0 && m.cost?.output === 0)
@@ -211,14 +254,385 @@ export async function refreshModels() {
         updateCurrentModelDisplay();
         renderModelList(document.getElementById('model-search')?.value || '');
         
-        const puterCount = models.length;
-        showToast(`Models refreshed: ${puterCount} Puter + ${grokModels.length} Grok`, 'success');
-        console.info(`[Models] Refreshed: ${puterCount} from Puter, ${grokModels.length} Grok preserved`);
+        showToast(`Refreshed ${models.length} Cloud Models`, 'success');
     } catch (error) {
         console.error('Model refresh failed:', error?.message || error);
-        showToast('Model refresh failed — check connection', 'error');
+        showToast('Refresh failed — check logs', 'error');
     } finally {
         if (svg) svg.classList.remove('spin');
         if (btn) btn.disabled = false;
     }
 }
+
+// === WINDOW EXPORTS FOR NEW UI ===
+
+window.gravityChat = window.gravityChat || {};
+window.gravityChat.toggleGrokMenu = toggleGrokMenu;
+window.gravityChat.selectModel = selectModel;
+window.gravityChat.retryConnection = async () => {
+    // Force check
+    const btn = document.querySelector('button[onclick*="retryConnection"]');
+    if(btn) {
+        btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Connecting...`;
+        btn.disabled = true;
+    }
+    
+    const status = await checkLocalServerStatus();
+    AppState.localServerOnline = status.online;
+    if(status.online) {
+        AppState.localModelLoaded = status.model;
+        showToast('Backend Online', 'success');
+    } else {
+        showToast('Backend still offline', 'error');
+    }
+    renderModelList();
+};
+
+// Navigation
+window.gravityChat.setLocalTab = (tab) => {
+    AppState.localTab = tab;
+    renderModelList();
+};
+
+// Local Actions
+window.gravityChat.loadLocalModel = async (id) => {
+    const btn = document.querySelector(`button[onclick*="loadLocalModel('${id}')"]`);
+    if (btn) {
+         btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span>`;
+         btn.disabled = true;
+    }
+    
+    try {
+        const success = await loadLocalModel(id);
+        if (success) {
+            AppState.localModelLoaded = id;
+        }
+    } finally {
+        renderModelList();
+    }
+};
+
+window.gravityChat.unloadLocalModel = async () => {
+    await unloadLocalModel();
+    AppState.localModelLoaded = null;
+    renderModelList();
+};
+
+window.gravityChat.openLocalFolder = async () => {
+    showInfoModal("Local Folder", "Open your project folder and look for 'local_models'. Put .gguf files there.");
+};
+
+window.gravityChat.performHFSearch = async (overrideQuery) => {
+    const input = document.getElementById('hf-search-input');
+    const query = overrideQuery || input?.value || 'GGUF';
+    
+    // Capture filters
+    const quantFilter = document.getElementById('hf-filter-quant')?.value || 'all';
+    const sizeFilter = document.getElementById('hf-filter-size')?.value || 'all';
+    
+    AppState.hfSearchQuery = query;
+    AppState.hfSearchFilters = { quant: quantFilter, size: sizeFilter };
+    
+    const container = document.getElementById('hf-results');
+    if (!container) return;
+    
+    container.innerHTML = `<div class="text-center py-4"><span class="loading loading-dots text-fuchsia-400"></span></div>`;
+    
+    // Pass filters (need to update searchHF signature or modify query string)
+    // For now, simple query modification
+    let fullQuery = query;
+    if (quantFilter !== 'all') fullQuery += ` ${quantFilter}`;
+    // Size filter is harder on HF API side without specific params, so maybe client-side filter
+    
+    const results = await searchHF(fullQuery);
+    
+    // Client-side filtering for size if needed, or just display raw
+    // The current searchHF implementation returns minimal metadata, 
+    // real size filtering would require checking model card or tags.
+    // We'll skip complex size filtering for this iteration to keep it fast.
+    
+    if (!results.length) {
+        container.innerHTML = `<div class="text-xs text-gray-500 text-center py-4">No results found.</div>`;
+        return;
+    }
+    
+    // Save results for tooltip lookup
+    AppState.hfSearchResults = results;
+    
+    container.innerHTML = ModelsUI.renderHFResults(results);
+};
+
+// --- TOOLTIP LOGIC ---
+window.gravityChat.showModelTooltip = (event, modelId, isCloud = false) => {
+    let model;
+    
+    if (isCloud) {
+        model = AppState.allModels?.find(m => m.id === modelId);
+    } else {
+        model = AppState.hfSearchResults?.find(m => m.id === modelId);
+    }
+    
+    if (!model) return;
+
+    let tooltip = document.getElementById('global-model-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'global-model-tooltip';
+        tooltip.className = 'fixed z-[9999] pointer-events-none hidden';
+        document.body.appendChild(tooltip);
+    }
+
+    // Determine metadata based on source
+    let title = model.id;
+    let subtitle = isCloud ? (model.provider || 'Cloud API') : (model.pipeline_tag || 'text-generation');
+    
+    let content = '';
+    
+    if (isCloud) {
+        // Cloud Model Metadata
+        const inputCost = model.cost?.input || 0;
+        const outputCost = model.cost?.output || 0;
+        const isFree = inputCost === 0 && outputCost === 0;
+        
+        content = `
+            <div class="grid grid-cols-2 gap-2 text-[9px] text-gray-400 mb-2">
+                <div><span class="text-gray-600 block">PROVIDER</span> ${model.provider || 'Unknown'}</div>
+                <div><span class="text-gray-600 block">CONTEXT</span> ${model.context_window || 'Unknown'}</div>
+                <div class="col-span-2 border-t border-white/5 pt-1 mt-1">
+                    <span class="text-gray-600 block">PRICING</span> 
+                    ${isFree ? '<span class="text-cyan-400">Free</span>' : 
+                    `In: $${inputCost}/1M <br> Out: $${outputCost}/1M`}
+                </div>
+            </div>
+        `;
+    } else {
+        // HF Model Metadata
+        const dateStr = model.last_modified ? new Date(model.last_modified).toLocaleDateString() : 'Unknown';
+        content = `
+            <div class="grid grid-cols-2 gap-2 text-[9px] text-gray-400 mb-2">
+                <div><span class="text-gray-600 block">AUTHOR</span> ${model.author || 'Unknown'}</div>
+                <div><span class="text-gray-600 block">UPDATED</span> ${dateStr}</div>
+                <div><span class="text-gray-600 block">DOWNLOADS</span> ${ModelsUI.formatNumber(model.downloads)}</div>
+                <div><span class="text-gray-600 block">LIKES</span> ${ModelsUI.formatNumber(model.likes)}</div>
+            </div>
+            <div class="flex flex-wrap gap-1">
+                ${(model.tags || []).slice(0, 5).map(t => `<span class="text-[8px] px-1 py-0.5 bg-fuchsia-500/10 text-fuchsia-300 rounded border border-fuchsia-500/20">${t}</span>`).join('')}
+            </div>
+        `;
+    }
+
+    tooltip.innerHTML = `
+        <div class="bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-2xl w-64 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex items-start justify-between mb-2">
+                <div class="text-xs font-bold ${isCloud ? 'text-cyan-400' : 'text-fuchsia-400'} truncate pr-2">${title}</div>
+                <span class="text-[8px] px-1.5 py-0.5 bg-white/10 rounded text-gray-300">${subtitle}</span>
+            </div>
+            ${content}
+        </div>
+    `;
+
+    // Position logic
+    const rect = event.currentTarget.getBoundingClientRect();
+    tooltip.style.left = `${rect.right + 10}px`; 
+    tooltip.style.top = `${rect.top}px`;
+    
+    if (rect.right + 270 > window.innerWidth) {
+        tooltip.style.left = `${rect.left - 270}px`; 
+    }
+    
+    tooltip.classList.remove('hidden');
+};
+
+window.gravityChat.showHFTooltip = (event) => {
+    let tooltip = document.getElementById('global-model-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'global-model-tooltip';
+        tooltip.className = 'fixed z-[9999] pointer-events-none hidden';
+        document.body.appendChild(tooltip);
+    }
+
+    tooltip.innerHTML = `
+        <div class="bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-2xl w-64 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">🤗</span>
+                <div class="text-xs font-bold text-yellow-400">Hugging Face Hub</div>
+            </div>
+            <p class="text-[10px] text-gray-400 leading-relaxed">
+                The <span class="text-gray-200 font-semibold">Hugging Face Hub</span> is a community-driven platform for hosting machine learning models.
+            </p>
+            <div class="mt-2 text-[9px] text-gray-500 bg-white/5 rounded p-1.5 border border-white/5">
+                ℹ Verified GGUF models are safe to download and run locally on your hardware.
+            </div>
+        </div>
+    `;
+
+    // Position logic (Center below element)
+    const rect = event.currentTarget.getBoundingClientRect();
+    const tooltipWidth = 256; // w-64
+    tooltip.style.left = `${rect.left + (rect.width/2) - (tooltipWidth/2)}px`; 
+    tooltip.style.top = `${rect.bottom + 10}px`;
+    
+    tooltip.classList.remove('hidden');
+};
+
+window.gravityChat.showHFTooltip = (event) => {
+    let tooltip = document.getElementById('global-model-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'global-model-tooltip';
+        tooltip.className = 'fixed z-[9999] pointer-events-none hidden';
+        document.body.appendChild(tooltip);
+    }
+
+    tooltip.innerHTML = `
+        <div class="bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-2xl w-64 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">🤗</span>
+                <div class="text-xs font-bold text-yellow-400">Hugging Face Hub</div>
+            </div>
+            <p class="text-[10px] text-gray-400 leading-relaxed">
+                The <span class="text-gray-200 font-semibold">Hugging Face Hub</span> is a community-driven platform for hosting machine learning models.
+            </p>
+            <div class="mt-2 text-[9px] text-gray-500 bg-white/5 rounded p-1.5 border border-white/5">
+                ℹ Verified GGUF models are safe to download and run locally on your hardware.
+            </div>
+        </div>
+    `;
+
+    // Position logic (Center below element)
+    const rect = event.currentTarget.getBoundingClientRect();
+    const tooltipWidth = 256; // w-64
+    tooltip.style.left = `${rect.left + (rect.width/2) - (tooltipWidth/2)}px`; 
+    tooltip.style.top = `${rect.bottom + 10}px`;
+    
+    // Boundary check
+    if (parseFloat(tooltip.style.left) < 10) tooltip.style.left = '10px';
+
+    tooltip.classList.remove('hidden');
+};
+
+window.gravityChat.hideModelTooltip = () => {
+    const tooltip = document.getElementById('global-model-tooltip');
+    if (tooltip) tooltip.classList.add('hidden');
+};
+
+window.gravityChat.downloadModel = async (repoId, filename) => {
+    showInfoModal("Download Info", `Please download <b class="text-cyan-400">${repoId}</b> manually and place it in <code>local_models</code> folder.<br><br>Direct Browser Download coming soon.`);
+};
+
+// ...rest of file (delete confirmation, toggles, etc)
+
+
+// --- DELETE CONFIRMATION MODAL ---
+
+window.gravityChat.confirmDeleteModel = (modelId) => {
+    const modalRoot = document.getElementById('modals-root');
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200';
+    modal.innerHTML = `
+        <div class="glass-card max-w-sm w-full p-6 border-red-500/30 shadow-[0_0_50px_rgba(220,38,38,0.1)] scale-in-center">
+            <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                <span class="text-red-500">⚠</span> Delete Model?
+            </h3>
+            <p class="text-sm text-gray-300 mb-2">
+                Are you sure you want to delete <b class="text-white">${modelId}</b>?
+            </p>
+            <p class="text-[10px] text-gray-500 font-mono mb-6 uppercase tracking-wider">
+                This action cannot be undone.
+            </p>
+            
+            <div class="flex gap-3 justify-end">
+                <button id="btn-cancel-delete" class="btn btn-ghost btn-sm text-gray-400 hover:text-white">Cancel</button>
+                <button id="btn-confirm-delete" class="btn btn-error btn-sm bg-red-500/10 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500">
+                    Delete Model
+                </button>
+            </div>
+        </div>
+    `;
+    
+    modalRoot.appendChild(modal);
+    
+    // Handlers
+    const close = () => {
+        modal.classList.add('fade-out');
+        setTimeout(() => modal.remove(), 200);
+    };
+    
+    modal.querySelector('#btn-cancel-delete').onclick = close;
+    modal.querySelector('#btn-confirm-delete').onclick = async () => {
+         const success = await deleteLocalModel(modelId);
+         if (success) {
+             renderModelList(); // Refresh list
+         }
+         close();
+    };
+    
+    // Close on click outside
+    modal.onclick = (e) => {
+        if (e.target === modal) close();
+    };
+};
+
+// --- TOGGLE LOGIC ---
+
+window.gravityChat = window.gravityChat || {};
+window.gravityChat.initToggles = () => {
+    const setupToggle = (id, onChange) => {
+        const toggle = document.getElementById(id);
+        if (!toggle) return;
+
+        // Init state check based on AppState
+        if (id === 'model-source-toggle' && AppState.useLocalModel) toggle.classList.add('checked');
+        if (id === 'premium-toggle' && AppState.premiumEnabled) toggle.classList.add('checked');
+
+        const updateState = () => {
+            const isChecked = toggle.classList.contains('checked');
+            const labels = toggle.querySelectorAll('.toggle-label');
+            
+            // Left Label (Cloud/Free) - Active when NOT checked
+            if (labels[0]) {
+                labels[0].classList.toggle('active-text', !isChecked);
+                labels[0].classList.toggle('inactive-text', isChecked);
+            }
+            
+            // Right Label (Local/Pro) - Active when checked
+            if (labels[1]) {
+                labels[1].classList.toggle('active-text', isChecked);
+                labels[1].classList.toggle('inactive-text', !isChecked);
+            }
+        };
+
+        // Initial visual update
+        updateState();
+
+        // Click Handler
+        toggle.onclick = (e) => {
+            toggle.classList.toggle('checked');
+            updateState();
+            onChange(toggle.classList.contains('checked'));
+        };
+    };
+
+    // 1. Source Toggle (Cloud vs Local)
+    setupToggle('model-source-toggle', (isLocal) => {
+        AppState.useLocalModel = isLocal;
+        renderModelList();
+        updateCurrentModelDisplay();
+    });
+
+    // 2. Premium Toggle (Free vs Pro)
+    setupToggle('premium-toggle', (isPro) => {
+        AppState.premiumEnabled = isPro;
+        renderModelList();
+        showToast(isPro ? 'Pro Models Unlocked' : 'Free Processors Active', 'info');
+    });
+};
+
+// Call init on load/render
+document.addEventListener('DOMContentLoaded', () => { 
+    // Wait for DOM
+    setTimeout(() => window.gravityChat?.initToggles(), 500); 
+});
+
+

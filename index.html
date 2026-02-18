@@ -1,49 +1,108 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background-color: #0a0a0f;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>GravityChat v2.4.0 - Free AI Workstation</title>
+    <title>All Seeing Cat - AI Workstation</title>
+    <meta name="description" content="All Seeing Cat - Your Personal AI Workstation running on Puter.js">
+
+    <link rel="icon" type="image/png" href="cat-icon-1024-transparent5.png">
+    
+    <!-- Remote Debugger (Restored) -->
+    <script src="src/utils/logger.js?v=2.4.0"></script>
 
     <!-- Theme Bootstrapper: Applied synchronously to <html> to prevent flash -->
     <script>
-        (function() {
-            try {
-                var settings = JSON.parse(localStorage.getItem('gravitychat_settings') || '{}');
-                var theme = settings.theme || 'void';
-                var themeClass = 'theme-' + theme;
-                document.documentElement.className = themeClass;
-            } catch (e) {
-                document.documentElement.className = 'theme-void';
-            }
-        })();
+        // Initialize global state before anything else
+        var settings = JSON.parse(localStorage.getItem('gravitychat_settings') || '{}');
+        // Apply theme immediately to prevent flash
+        if (settings.theme === 'light') {
+            document.documentElement.style.backgroundColor = '#ffffff';
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+            document.documentElement.style.backgroundColor = '#0a0a0f';
+        }
     </script>
 
-    <link rel="icon" type="image/png" href="favicon.png">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles/main.css?v=2.4.0">
+    
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     
     <!-- Puter.js v2 -->
     <script src="https://js.puter.com/v2/"></script>
     
-    <!-- Remote Debugger (Restored) -->
-    <script src="src/utils/logger.js?v=2.4.0"></script>
-    
     <!-- Tailwind CSS + daisyUI -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(var(--border))",
+                        input: "hsl(var(--input))",
+                        ring: "hsl(var(--ring))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                        primary: {
+                            DEFAULT: "hsl(var(--primary))",
+                            foreground: "hsl(var(--primary-foreground))",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(var(--secondary))",
+                            foreground: "hsl(var(--secondary-foreground))",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(var(--destructive))",
+                            foreground: "hsl(var(--destructive-foreground))",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(var(--muted))",
+                            foreground: "hsl(var(--muted-foreground))",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(var(--accent))",
+                            foreground: "hsl(var(--accent-foreground))",
+                        },
+                        popover: {
+                            DEFAULT: "hsl(var(--popover))",
+                            foreground: "hsl(var(--popover-foreground))",
+                        },
+                        card: {
+                            DEFAULT: "hsl(var(--card))",
+                            foreground: "hsl(var(--card-foreground))",
+                        },
+                        // Custom Neon Theme Colors
+                        'neon-primary': '#00fff7',
+                        'neon-secondary': '#d500f9',
+                        'glass-bg': 'rgba(10, 10, 15, 0.7)',
+                        'glass-border': 'rgba(255, 255, 255, 0.1)',
+                    }
+                }
+            }
+        }
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.6.0/dist/full.min.css" rel="stylesheet" type="text/css" />
     
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="styles/main.css?v=2.4.0">
+    <style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+    </style>
 </head>
-<body class="bg-void">
+<body class="bg-void" style="background-color: #0a0a0f;">
     <!-- Loading overlay: shown instantly, removed after init completes -->
     <div id="loading-overlay" style="
         position: fixed; inset: 0; z-index: 9999;
@@ -52,23 +111,22 @@
         transition: opacity 0.4s ease;
     ">
         <div style="text-align: center;">
-            <div style="
-                width: 40px; height: 40px; margin: 0 auto 16px;
-                border: 3px solid var(--glass-border, rgba(255,255,255,0.1));
-                border-top-color: var(--neon-primary, #00fff7);
-                border-radius: 50%;
-                animation: spin 0.8s linear infinite;
-            "></div>
+            <img src="loading-true.gif" alt="Loading..." style="width: 192px; height: 192px; margin: 0 auto 24px; display: block; object-fit: contain;">
             <div style="
                 font-family: 'Inter', sans-serif;
-                font-size: 13px;
-                color: var(--text-muted, #71717a);
-                letter-spacing: 0.05em;
-            ">Loading workspace...</div>
+                font-size: 14px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.25em;
+                color: var(--neon-primary, #00fff7);
+                text-shadow: 0 0 10px rgba(0, 255, 247, 0.4);
+                animation: pulse 1.5s infinite ease-in-out;
+            ">LOADING ALL SEEING CAT...</div>
         </div>
     </div>
     <style>
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
         /* Hide app until state is loaded to prevent FOUC */
         #app-container { opacity: 0; transition: opacity 0.3s ease; }
         #app-container.ready { opacity: 1; }
@@ -76,16 +134,10 @@
     <div id="app-container">
         <!-- Sidebar -->
         <aside id="sidebar" class="p-4 flex flex-col h-full">
-            <div class="flex items-center gap-2 mb-6 px-2">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-fuchsia-500 p-0.5 shadow-lg shadow-cyan-500/20">
-                    <div class="w-full h-full rounded-[10px] bg-black flex items-center justify-center">
-                        <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                    </div>
-                </div>
+            <div class="flex items-center gap-4 mb-6 px-2">
+                <img src="cat-icon-1024-transparent5.png" alt="GravityChat Logo" class="w-14 h-14 object-contain">
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight text-white leading-none">GravityChat</h1>
+                    <h1 class="text-xl font-bold tracking-tight text-white leading-none">All Seeing Cat</h1>
                     <span class="text-[10px] font-mono text-cyan-500/80 uppercase tracking-widest">v2.3.0 CORE</span>
                 </div>
             </div>
@@ -114,7 +166,26 @@
                     </span>
                 </button>
                 <div id="tab-models" class="gchat-tab-panel hidden">
-                    <div class="flex items-center gap-2 px-2 mb-3 mt-2">
+                    <!-- Toggles -->
+                    <div class="px-2 space-y-3 mb-4">
+                        <!-- Local / Cloud Toggle -->
+                        <div class="custom-toggle" id="model-source-toggle">
+                            <div class="flex h-full items-center relative z-10 w-full">
+                                <span class="toggle-label active-text" data-val="cloud">CLOUD</span>
+                                <span class="toggle-label inactive-text" data-val="local">LOCAL</span>
+                            </div>
+                        </div>
+
+                        <!-- Free / Premium Toggle -->
+                        <div class="custom-toggle" id="premium-toggle">
+                            <div class="flex h-full items-center relative z-10 w-full">
+                                <span class="toggle-label active-text" data-val="free">FREE</span>
+                                <span class="toggle-label inactive-text" data-val="pro">PRO</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 px-2 mb-3">
                         <input type="text" id="model-search" placeholder="Search models..." class="flex-1 bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-cyan-500 outline-none">
                         <button id="btn-refresh-models" class="btn btn-ghost btn-circle btn-xs btn-icon flex-shrink-0 text-gray-400 hover:text-cyan-400 transition-colors" title="Refresh models list from Puter" aria-label="Refresh models">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -144,19 +215,34 @@
                         Files
                     </span>
                 </button>
-                <div id="tab-files" class="gchat-tab-panel hidden">
-                    <div class="flex items-center justify-between gap-1 mb-3 px-1 mt-2">
+                <div id="tab-files" class="gchat-tab-panel hidden px-1">
+                    <!-- Actions Toolbar -->
+                    <div class="flex items-center justify-between mb-3 mt-2">
                         <div class="flex gap-1">
-                            <button id="btn-new-file" class="btn btn-xs btn-ghost border-white/5" title="New File">+</button>
-                            <button id="btn-new-folder" class="btn btn-xs btn-ghost border-white/5" title="New Folder">📁</button>
-                            <button id="btn-refresh-files" class="btn btn-xs btn-ghost border-white/5" title="Refresh">🔄</button>
+                            <button id="btn-new-file" class="btn btn-square btn-sm btn-ghost hover:bg-white/10 text-cyan-400/80 hover:text-cyan-400 border border-white/5" title="New File">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            </button>
+                            <button id="btn-new-folder" class="btn btn-square btn-sm btn-ghost hover:bg-white/10 text-cyan-400/80 hover:text-cyan-400 border border-white/5" title="New Folder">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+                            </button>
+                            <button id="btn-refresh-files" class="btn btn-square btn-sm btn-ghost hover:bg-white/10 text-gray-400 hover:text-white border border-white/5" title="Refresh">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            </button>
                         </div>
-                        <button id="btn-index-memory" class="btn btn-xs btn-neon text-[10px] px-2">Index Memory</button>
+                        <button id="btn-index-memory" class="btn btn-xs btn-outline border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/50 font-normal tracking-wide">
+                            Index Memory
+                        </button>
                     </div>
-                    <div id="folder-indicator-container" class="px-2 py-1.5 bg-white/5 rounded border border-white/5 mb-2 cursor-pointer hover:bg-white/10 transition-all text-[10px] truncate">
-                        📂 <span id="current-folder-path">/root</span>
+
+                    <!-- Path Bar -->
+                    <div id="folder-indicator-container" class="group flex items-center gap-2 px-3 py-2.5 bg-black/40 rounded-lg border border-white/5 mb-3 cursor-pointer hover:border-cyan-500/30 hover:bg-black/60 transition-all">
+                        <svg class="w-4 h-4 text-cyan-500/50 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                        <span id="current-folder-path" class="text-xs font-mono text-gray-400 group-hover:text-gray-200 truncate flex-1 leading-none">/root</span>
+                        <svg class="w-3 h-3 text-gray-600 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
-                    <div id="files-explorer" class="space-y-1">
+
+                    <!-- File List -->
+                    <div id="files-explorer" class="space-y-1 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
                         <!-- Files load here -->
                     </div>
                 </div>
@@ -227,11 +313,8 @@
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full border border-white/5">
-                    <span class="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">FREE</span>
-                    <input type="checkbox" id="premium-toggle" class="toggle toggle-info toggle-xs" title="Toggle Premium Models">
-                    <span class="text-[9px] font-bold text-cyan-400 uppercase tracking-tighter">PREMIUM</span>
-                </div>
+                <!-- Premium/Free Toggle Container -->
+                <!-- Toggles moved to Sidebar -->
                 <div class="flex items-center gap-2">
                     <button id="btn-search" class="btn btn-ghost btn-circle btn-sm btn-icon" title="Search messages" aria-label="Search">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -270,7 +353,7 @@
                         <button id="btn-mic" class="btn btn-ghost btn-circle btn-sm btn-icon" title="Voice control" aria-label="Voice control">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                         </button>
-                        <button id="btn-send" class="btn btn-circle btn-sm btn-neon shadow-lg shadow-cyan-500/20" title="Send message" aria-label="Send">
+                        <button id="btn-send" class="btn btn-circle btn-sm btn-sleek-send" title="Send message" aria-label="Send">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                         </button>
                     </div>

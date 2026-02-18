@@ -2,16 +2,89 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
-## [v2.4.1] - "Session Stability" - 2026-02-17
+## [v2.6.1] - "A New Perspective" - 2026-02-18
 
-### Added
+### UI / UX
 
-- **Grok Bridge**: Official support for **manual cookie injection** in `api_server.py`. Allows bypassing anti-bot measures on Grok 4.20 by using established browser sessions.
+- **Smart Tooltips**: Added rich, context-aware hover cards for all models. Cloud models show pricing/provider info, and Hugging Face search results show detailed metadata without clipping.
+- **Tab Insights**: Hovering the "DOWNLOAD (HF)" tab now explains what the Hugging Face Hub is for new users.
+- **Voice Browser**: Styled the language dropdown to match the app's glassmorphism aesthetic.
+- **Fixes**: Resolved a flickering issue in the model list caused by aggressive auto-refresh during search navigation.
+
+## [v2.6.0] - "Local Intelligence" - 2026-02-18
+
+### Features
+
+- **Local LLM Support**: Added full support for running local `.gguf` models (via `llama-cpp-python` and CUDA). You can now run offline AI directly on your GPU.
+- **Local Model Manager**: New sidebar interface to scan, load, and unload models from your `local_models` folder.
+- **Process Management**: Completely rewrote `launcher.py` to use Windows Job Objects. This ensures that when you close the app window, ALL background processes (Python servers, Chrome instances, Nodes) are instantly and reliably terminated. No more zombie processes.
+- **Panic Button**: Added `kill_all.bat` to the root folder as a manual override to force-close everything if needed.
+
+## [v2.5.3] - "Panic Button" - 2026-02-18
+
+### System
+
+- **Process Management**: Implemented **Windows Job Objects** in `launcher.py`. This acts as a "dead man's switch" — if the main launcher dies, Windows INSTANTLY kills all child processes (Grok, Chrome, TTS, Python), preventing zombie process floods.
+- **Cleanup Intelligence**: Upgraded `cleanup_backend.ps1` to specifically target Playwright-spawned Chrome instances (via `--user-data-dir` matching) while leaving your personal browser sessions untouched.
+- **Panic Button**: Added `kill_all.bat` to the root directory. Double-clicking this immediately force-terminates all GravityChat-related processes if something gets stuck.
+
+## [v2.5.2] - 2026-02-18
+
+### UI / UX
+
+- **Rebrand**: Updated the loading screen text to "LOADING ALL SEEING CAT..." with a sleek neon style and pulse animation.
+- **Startup**: Fixed the jarring white flash on app launch by enforcing a dark background (`#0a0a0f`) via inline styles and updated window showing logic.
+- **Components**: Redesigned the "Send" button to be a transparent circle with a neon border (`btn-sleek-send`). Cleaned up the "Stop" button styling.
+- **Settings**: Toned down the "Advanced / Debug" section header color to a relaxed gray (`#9ca3af`) and adjusted container opacity for a calmer aesthetic.
 
 ### Fixed
 
-- **Grok Bridge**: Stabilized internal mapping paths in `core/reverse/parser.py` using absolute path resolution, fixing `Errno 2` (File Not Found) errors.
-- **Environment**: Standardized bridge execution within the dedicated `Grok-Api-main/venv`.
+- **FOUC**: Injected inline styles to `<html>` and `<body>` to prevent any styling delay flashes.
+
+## [v2.5.1] - "All Seeing Cat" - 2026-02-18
+
+### UI / UX
+
+- **Rebrand**: Officially renamed application to **All Seeing Cat**. New icon, title, and splash screen.
+- **Files Sidebar**: Modernized with sleek icon-only buttons (New File, New Folder, Refresh) and a glass-morphism path indicator. "Index Memory" button made more subtle.
+- **Window**: Removed the default Electron menu bar for a cleaner, native-app feel.
+- **Settings**: Redesigned the **Advanced / Debug** section to be compact and themes-aware (using dynamic CSS variables for borders/colors). Removed outdated "Grok Automation" section.
+
+### Fixed
+
+- **Startup**: Resolved critical "Puter is undefined" error by correctly configuring `nodeIntegration: false` / `contextIsolation: true` in `electron-main.js`.
+- **Icons**: Fixed transparency issues with the app icon by using the correct source image.
+
+## [v2.5.0] - "Voice Interruption" - 2026-02-18
+
+### Added
+
+- **Voice**: Implemented **Robust Interruption Handling**. Voice playback now instantly stops (`stopSpeech`) when a chat is cleared or a session is deleted, preventing orphaned audio.
+- **Voice**: Added **Microphone Management** during modal interactions. The microphone is now automatically paused (`voiceSuspended` state) when the Voice Browser modal is open and resumes automatically upon closing/confirming.
+- **System**: Introduced `isProcessingIntent` state to `AppState` to prevent input collisions during hidden background AI commands (e.g., persona/mode switches).
+- **Architecture**: Decoupled the voice system into **Modular Engines** (`engine.js`) and **Logic flows** (`logic.js`) for better testability and maintenance.
+- **Accessibility**: Added `aria-label` to the Stop Generation button and improved **Keyboard Navigation** for the session list (tabindex, focus states, and Enter key support).
+
+### Fixed
+
+- **System**: Fixed a race condition where double-sending "hidden" messages could cause the AI to stall or enter an inconsistent state.
+- **UI**: Cleaned up the Settings sidebar by moving manual/advanced Grok session inputs and "Reboot Core" into a dedicated **Advanced / Debug** collapsible section.
+- **Voice**: Resolved an issue where closing the voice browser wouldn't resume listening even if "Continuous Voice" was active.
+
+## [v2.4.2] - "Browser Bridge" - 2026-02-18
+
+### Added
+
+- **Grok Bridge**: Implemented **Browser Driver Architecture** (`grok_driver.py`) using Playwright to bypass 403 Forbidden errors. This routes traffic through a real Chrome instance, overcoming aggressive anti-bot measures.
+- **Grok Bridge**: Added **Streaming Emulation** for driver responses. The bridge now wraps scraped browser text into a simulated token stream compatible with the GravityChat UI.
+- **Grok Bridge**: Integrated **Emoji Suppression** logic. Every request sent to the driver automatically appends a "do not use emojis" instruction to keep responses clean.
+
+### Fixed
+
+- **Grok Bridge**: Multi-layered **DOM Scraper** fallback system in `grok_driver.py` ensures responses are captured even if Grok's UI changes classes (using `.prose`, `message` divs, and `p` tags).
+- **Grok Bridge**: Corrected `api_server.py` request body handling to fix `AttributeError: 'Request' object has no attribute 'proxy'`.
+
+## [v2.4.1] - "Session Stability" - 2026-02-17
 
 ## [v2.4.0] - "Live Roster" - 2026-02-17
 

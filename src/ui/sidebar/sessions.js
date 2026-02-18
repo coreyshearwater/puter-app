@@ -74,7 +74,9 @@ function renderSessionList() {
             : 'hover:bg-white/5 border-l-2 border-transparent';
             
         return `
-            <div class="group relative flex items-center justify-between p-2 cursor-pointer transition-all rounded-r ${activeClasses}"
+            <div class="group relative flex items-center justify-between p-2 cursor-pointer transition-all rounded-r focus-within:bg-white/10 outline-none ${activeClasses}"
+                 tabindex="0"
+                 onkeydown="if(event.key==='Enter') window.gravityChat.switchSession('${session.id}')"
                  onclick="window.gravityChat.switchSession('${session.id}')">
                 <div class="flex flex-col overflow-hidden min-w-0">
                     <span class="text-xs font-medium truncate ${isActive ? 'text-white' : 'text-gray-400'}">${session.name}</span>
@@ -134,7 +136,10 @@ export function deleteSession(sessionId) {
     const session = AppState.sessions.find(s => s.id === sessionId);
     const sessionName = session ? session.name : 'this chat';
 
-    showConfirmModal('Delete Chat', `Are you sure you want to delete "${sessionName}"? All messages in this thread will be permanently removed.`, () => {
+    showConfirmModal('Delete Chat', `Are you sure you want to delete "${sessionName}"? All messages in this thread will be permanently removed.`, async () => {
+        const { stopSpeech } = await import('../../services/voice.js');
+        stopSpeech();
+        
         // specific logic: if it's the only session, just clear it
         if (AppState.sessions.length <= 1) {
             AppState.messages = [];

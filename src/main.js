@@ -18,7 +18,7 @@ import { diagnosePuterModels, stopGeneration } from './services/ai.js';
 import { openVoiceBrowser } from './ui/voice-browser.js';
 
 // Namespace for global access (legacy support for string templates)
-window.gravityChat = {
+window.gravityChat = Object.assign(window.gravityChat || {}, {
     loadFiles,
     previewFile,
     deleteFile,
@@ -83,16 +83,12 @@ window.gravityChat = {
         renderModelList();
         saveStateToKV();
     },
-    setMediaParam: (param, value) => {
-        AppState.mediaParams[param] = value;
-        console.log(`🎨 Media Param: ${param} = ${value}`);
-    },
     openMediaLab: () => renderMediaLab(),
     closeMediaLab: () => {
         const modal = document.getElementById('media-lab-modal');
         if (modal) modal.style.display = 'none';
     }
-};
+});
 
 async function init() {
     console.log('GravityChat initializing...');
@@ -144,11 +140,11 @@ function showAuthOverlay() {
         overlay.innerHTML = `
             <div class="glass-card max-w-md w-full p-8 text-center space-y-6 slide-in border-cyan-500/30">
                 <div class="space-y-2">
-                    <h1 class="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent">GravityChat</h1>
+                    <h1 class="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent">All Seeing Cat</h1>
                     <p class="text-gray-400">Authentication Required</p>
                 </div>
                 <div class="p-4 bg-cyan-500/5 rounded-lg border border-cyan-500/10 text-sm text-gray-300">
-                    GravityChat uses Puter.js for secure storage and AI access. Sign in to continue your session.
+                    All Seeing Cat uses Puter.js for secure storage and AI access. Sign in to continue your session.
                 </div>
                 <button id="btn-auth-signin" class="btn btn-neon w-full h-14 text-lg">Sign In with Puter</button>
                 <p class="text-[10px] text-gray-500 italic">Popups must be allowed for the sign-in window to appear.</p>
@@ -231,6 +227,10 @@ async function completeInit() {
     const appContainer = document.getElementById('app-container');
     if (appContainer) appContainer.classList.add('ready');
 
+    // Init Toggles
+    if (window.gravityChat?.initToggles) window.gravityChat.initToggles();
+    
+    // Remove loading overlay
     const overlay = document.getElementById('loading-overlay');
     if (overlay) {
         overlay.style.opacity = '0';
@@ -291,10 +291,82 @@ function setupGlobalListeners() {
         });
     }
 
+    // --- Toggle UI Logic ---
+    const updateToggleVisuals = () => {
+        const isLocal = localToggle ? localToggle.checked : false;
+        const isPremium = premToggle ? premToggle.checked : false;
+
+        // Cloud/Local Labels
+        const lblCloud = document.getElementById('lbl-cloud');
+        const lblLocal = document.getElementById('lbl-local');
+        
+        if (lblCloud && lblLocal) {
+            if (isLocal) {
+                lblCloud.className = 'text-[9px] font-bold text-gray-600 uppercase tracking-tighter transition-colors duration-300';
+                lblLocal.className = 'text-[9px] font-bold text-emerald-400 uppercase tracking-tighter transition-colors duration-300';
+            } else {
+                lblCloud.className = 'text-[9px] font-bold text-cyan-400 uppercase tracking-tighter transition-colors duration-300';
+                lblLocal.className = 'text-[9px] font-bold text-gray-600 uppercase tracking-tighter transition-colors duration-300';
+            }
+        }
+
+        // Premium/Free Labels & Container State
+        const lblFree = document.getElementById('lbl-free');
+        const lblPro = document.getElementById('lbl-pro');
+        const containerPrem = document.getElementById('container-premium-toggle');
+
+        if (lblFree && lblPro && containerPrem) {
+            if (isLocal) {
+                // Dim/Disable entire container
+                containerPrem.style.opacity = '0.3';
+                containerPrem.style.pointerEvents = 'none';
+                containerPrem.style.filter = 'grayscale(100%)';
+                
+                // Set both labels to gray if disabled, or keep state but dimmed
+                lblFree.className = 'text-[9px] font-bold text-gray-600 uppercase tracking-tighter transition-colors duration-300';
+                lblPro.className = 'text-[9px] font-bold text-gray-600 uppercase tracking-tighter transition-colors duration-300';
+            } else {
+                // Active State
+                containerPrem.style.opacity = '1';
+                containerPrem.style.pointerEvents = 'auto';
+                containerPrem.style.filter = 'none';
+
+                if (isPremium) {
+                    lblFree.className = 'text-[9px] font-bold text-gray-600 uppercase tracking-tighter transition-colors duration-300';
+                    lblPro.className = 'text-[9px] font-bold text-cyan-400 uppercase tracking-tighter transition-colors duration-300 shadow-cyan-glow';
+                } else {
+                    lblFree.className = 'text-[9px] font-bold text-cyan-400 uppercase tracking-tighter transition-colors duration-300';
+                    lblPro.className = 'text-[9px] font-bold text-gray-600 uppercase tracking-tighter transition-colors duration-300';
+                }
+            }
+        }
+    };
+
     // Premium Toggle
     const premToggle = document.getElementById('premium-toggle');
-    premToggle.checked = AppState.premiumEnabled;
-    premToggle.onchange = (e) => window.gravityChat.setPremium(e.target.checked);
+    if (premToggle) {
+        premToggle.checked = AppState.premiumEnabled;
+        premToggle.onchange = (e) => {
+            window.gravityChat.setPremium(e.target.checked);
+            updateToggleVisuals();
+        };
+    }
+
+    // Local Toggle (New)
+    const localToggle = document.getElementById('local-toggle');
+    if (localToggle) {
+        localToggle.checked = AppState.useLocalModel;
+        localToggle.onchange = (e) => {
+            AppState.useLocalModel = e.target.checked;
+            renderModelList();
+            saveStateToKV();
+            document.dispatchEvent(new CustomEvent('updateModelDisplay'));
+            updateToggleVisuals();
+        };
+    }
+    
+    // Initial Run
+    updateToggleVisuals();
 
     // Folder select
     document.getElementById('folder-indicator-container').onclick = async () => {

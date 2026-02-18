@@ -4,83 +4,139 @@ import sys
 import time
 import signal
 import webbrowser
+import ctypes
+from ctypes import wintypes
 
-def find_chrome():
+# --- Windows Job Object (The Guard Rail) ---
+def configure_sys_job_object():
+    if os.name != 'nt': return None
+    try:
+        job = ctypes.windll.kernel32.CreateJobObjectW(None, None)
+        class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
+            _fields_ = [('PerProcessUserTimeLimit', wintypes.LARGE_INTEGER), ('PerJobUserTimeLimit', wintypes.LARGE_INTEGER), ('LimitFlags', wintypes.DWORD), ('MinimumWorkingSetSize', ctypes.c_size_t), ('MaximumWorkingSetSize', ctypes.c_size_t), ('ActiveProcessLimit', wintypes.DWORD), ('Affinity', ctypes.c_size_t), ('PriorityClass', wintypes.DWORD), ('SchedulingClass', wintypes.DWORD)]
+        class IO_COUNTERS(ctypes.Structure):
+            _fields_ = [('ReadOperationCount', ctypes.c_ulonglong), ('WriteOperationCount', ctypes.c_ulonglong), ('OtherOperationCount', ctypes.c_ulonglong), ('ReadTransferCount', ctypes.c_ulonglong), ('WriteTransferCount', ctypes.c_ulonglong), ('OtherTransferCount', ctypes.c_ulonglong)]
+        class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
+            _fields_ = [('BasicLimitInformation', JOBOBJECT_BASIC_LIMIT_INFORMATION), ('IoInfo', IO_COUNTERS), ('ProcessMemoryLimit', ctypes.c_size_t), ('JobMemoryLimit', ctypes.c_size_t), ('PeakProcessMemoryUsed', ctypes.c_size_t), ('PeakJobMemoryUsed', ctypes.c_size_t)]
+        info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+        info.BasicLimitInformation.LimitFlags = 0x2000 # KILL_ON_JOB_CLOSE
+        ctypes.windll.kernel32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info))
+        ctypes.windll.kernel32.AssignProcessToJobObject(job, ctypes.windll.kernel32.GetCurrentProcess())
+        return job
+    except Exception as e:
+        print(f"⚠️  JobObject Error: {e}")
+        return None
+
+def kill_port(port):
+    try:
+        out = subprocess.check_output(f"netstat -ano", shell=True).decode()
+        for line in out.splitlines():
+            if f":{port}" in line and "LISTENING" in line:
+                pid = line.strip().split()[-1]
+                if pid.isdigit() and pid != "0":
+                    subprocess.call(f"taskkill /F /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except: pass
+
+def get_venv_python(venv_dir):
+    path = os.path.join(os.getcwd(), venv_dir, "Scripts", "python.exe")
+    return path if os.path.exists(path) else "python"
+
+def find_chrome_binary():
+    # 1. Look for portable chrome (Priority)
+    portable = os.path.join(os.getcwd(), "bin", "chrome-win", "chrome.exe")
+    if os.path.exists(portable): return portable
+    
+    # 2. Look for system chrome
     paths = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
         os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
     ]
     for p in paths:
-        if os.path.exists(p):
-            return p
+        if os.path.exists(p): return p
     return None
 
 def main():
-    print("🚀 Starting GravityChat...")
+    print("🚀 Starting GravityChat Logic Core...")
+    job = configure_sys_job_object()
     
-    # 1. Start Debug Server (hidden/minimized)
-    # We use CREATE_NO_WINDOW flag to hide console
-    kwargs = {}
-    if os.name == 'nt':
-        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
-        
-    # Use the venv python explicitly, NOT sys.executable (which points to this exe itself!)
-    venv_python = os.path.join(os.getcwd(), "Grok-Api-main", "venv", "Scripts", "python.exe")
-    if not os.path.exists(venv_python):
-        # Fallback to system python if venv is missing (unlikely but safe)
-        venv_python = "python"
-        
-    debug_server = subprocess.Popen([venv_python, "debug_server.py"], **kwargs)
-    print("✅ Debug Server Started")
-
-    # 2. Start Grok API (also hidden)
-    grok_cwd = "Grok-Api-main"
-    # Ensure correct path for api server python too
-    grok_cmd = [venv_python, "api_server.py"] 
-    # venv_python is absolute path so it works regardless of cwd
-    grok_server = subprocess.Popen(grok_cmd, cwd=grok_cwd, **kwargs)
-    print("✅ Grok API Bridge Started")
-
-    # 3. Launch Chrome App Mode via Shortcut or Direct
-    # Using the shortcut ensures the icon is correct on taskbar
-    chrome_path = find_chrome()
-    url = "http://localhost:8000/index.html"
+    # Cleanup ports
+    for p in [8000, 8001, 5050, 6969]: kill_port(p)
     
-    # We launch via the shortcut we created earlier if it exists, otherwise direct chrome
-    shortcut_path = os.path.abspath("GravityChat.lnk")
+    # Server Flags
+    flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
     
-    if os.path.exists(shortcut_path):
-        print(f"Launching via shortcut: {shortcut_path}")
-        os.startfile(shortcut_path)
-    elif chrome_path:
-        print(f"Launching via Chrome path: {chrome_path}")
-        subprocess.Popen([chrome_path, f"--app={url}", "--start-maximized", f"--user-data-dir={os.path.abspath('chrome_data')}"])
-    else:
-        print("Chrome not found, opening default browser...")
-        webbrowser.open(url)
-
-    print("\n⚠️  GravityChat is running. Close this window to stop servers.")
+    processes = []
+    
     try:
-        while True:
-            time.sleep(1)
-            # Check if servers are still alive
-            if debug_server.poll() is not None:
-                print("Debug server stopped unexpectedly.")
-                break
-            if grok_server.poll() is not None:
-                print("Grok server stopped unexpectedly.")
-                break
+        # 1. Grok API
+        processes.append(("Grok API", subprocess.Popen([get_venv_python("Grok-Api-main/venv"), "api_server.py"], cwd="Grok-Api-main", creationflags=flags)))
+        
+        # 2. Grok Driver
+        processes.append(("Grok Driver", subprocess.Popen([get_venv_python("Grok-Api-main/venv"), "grok_driver.py"], cwd="Grok-Api-main", creationflags=flags)))
+        
+
+        # 3. TTS
+        if os.path.exists("edge_tts_server.py"):
+            processes.append(("TTS", subprocess.Popen([get_venv_python("edge_tts_venv"), "edge_tts_server.py"], creationflags=flags)))
+
+        # 4. Local LLM Engine (New)
+        if os.path.exists("local_llm_server.py"):
+             llm_python = get_venv_python("local_llm_venv")
+             print("🧠 Starting Local LLM Engine...")
+             processes.append(("Local LLM", subprocess.Popen([llm_python, "local_llm_server.py"], creationflags=flags)))
+            
+        # 5. Debug Server
+        if os.path.exists("debug_server.py"):
+            processes.append(("Debug", subprocess.Popen(["python", "debug_server.py"], creationflags=flags)))
+
+
+        print("⏳ Warning up (3s)...")
+        time.sleep(3)
+        
+        # 5. Launch Chrome DIRECTLY (So we can watch it)
+        chrome_exe = find_chrome_binary()
+        if chrome_exe:
+            print(f"🖥️  Launching UI: {chrome_exe}")
+            user_data = os.path.join(os.getcwd(), "chrome_data")
+            app_url = "http://localhost:8000/index.html"
+            
+            # Arguments for App Mode
+            args = [
+                chrome_exe,
+                f"--app={app_url}",
+                f"--user-data-dir={user_data}",
+                "--start-maximized",
+                "--no-first-run",
+                "--no-default-browser-check"
+            ]
+            
+            # Use separate process group so Ctrl+C in console doesn't kill it immediately (we want graceful exit)
+            p_chrome = subprocess.Popen(args)
+            processes.append(("Chrome UI", p_chrome))
+            
+            print("\n✅ GravityChat Running. Close the App Window to exit.")
+            
+            # Watch Chrome loop
+            while p_chrome.poll() is None:
+                time.sleep(1)
+                
+            print("👋 App Window Closed. Shutting down...")
+        else:
+            print("⚠️  Chrome not found. Opening default browser (Unmonitored Mode).")
+            webbrowser.open("http://localhost:8000")
+            # Fallback loop
+            while True: time.sleep(1)
+            
     except KeyboardInterrupt:
-        pass
+        print("\n👋 Stop Signal.")
     finally:
-        print("Shutting down servers...")
-        debug_server.terminate()
-        grok_server.terminate()
+        print("🛑 Terminating processes...")
+        for name, p in processes:
+            if p.poll() is None:
+                p.terminate()
+        time.sleep(1)
 
 if __name__ == "__main__":
-    # Ensure current directory is correct when running from EXE
-    if getattr(sys, 'frozen', False):
-        os.chdir(os.path.dirname(sys.executable))
-    
+    if getattr(sys, 'frozen', False): os.chdir(os.path.dirname(sys.executable))
     main()

@@ -76,3 +76,8 @@ reset_kv.js           # dangerous nuke script - don't commit by accident
 .DS_Store
 Thumbs.db
 ehthumbs.db
+Grok-Api-main/playwright_profile
+chrome_data/
+codeaudit/
+bin/
+bin/

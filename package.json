@@ -1,0 +1,42 @@
+{
+  "name": "all-seeing-cat",
+  "productName": "All Seeing Cat",
+  "version": "2.6.1",
+  "description": "All Seeing Cat Desktop App (Electron Wrapper)",
+  "main": "electron-main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "author": "Antigravity",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "tree-kill": "^1.2.2"
+  },
+  "build": {
+    "appId": "com.gravitychat.app",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "files": [
+      "**/*",
+      "!**/*.pyc",
+      "!**/__pycache__/**",
+      "!**/venv/**"
+    ],
+    "extraResources": [
+        "Grok-Api-main/**/*",
+        "edge_tts_venv/**/*",
+        "*.py",
+        "*.bat",
+        "*.ps1"
+    ]
+  }
+}

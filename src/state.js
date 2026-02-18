@@ -245,7 +245,9 @@ export const AppState = {
     selectedVoice: 'Joanna',
     isRecording: false,
     isSpeakingAudio: false,
+    wasSpeakingBeforeModal: false, // NEW: Track if we were speaking
     isVoiceSession: false,
+    voiceSuspended: false, // NEW: Temporarily mute for settings/modals
     mediaRecorder: null,
     audioChunks: [],
     
@@ -271,4 +273,10 @@ export const AppState = {
     grokMenuExpanded: false,
     allowEmojis: false,
     projectIndex: null,
+    isProcessingIntent: false, 
+    
+    // Local LLM
+    useLocalModel: false,
+    localServerOnline: false,
+    localModelLoaded: null,
 };

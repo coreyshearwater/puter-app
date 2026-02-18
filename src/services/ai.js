@@ -7,6 +7,7 @@ import { showToast } from '../utils/toast.js';
 import { getProjectContext } from './memory.js';
 import { speakText, queueSpeech } from './voice.js'; // Import queueSpeech
 import { askGrok } from './grok-service.js';
+import { askLocalLLM } from './local-llm.js';
 import { showErrorModal, showInfoModal } from '../utils/modals.js';
 import { saveStateToKV } from './storage.js';
 import { syncCurrentSession } from '../ui/sidebar/sessions.js';
@@ -80,9 +81,14 @@ export async function sendMessage() {
             console.warn(`[AI] Force-resetting stuck isStreaming (stuck for ${(stuckMs/1000).toFixed(0)}s)`);
             AppState.isStreaming = false;
         } else {
-            console.warn('[AI] sendMessage blocked: isStreaming is true');
+            console.warn('[AI] sendMessage blocked: isStreaming or isProcessingIntent is true');
             return;
         }
+    }
+
+    if (AppState.isProcessingIntent) {
+        showToast('System busy...', 'warning');
+        return;
     }
     
     // Attachments
@@ -125,10 +131,12 @@ export async function sendMessage() {
 
 // Send a hidden system message (Oracular Mode toggles)
 export async function sendHiddenMessage(content) {
-    if (AppState.isStreaming) {
+    if (AppState.isStreaming || AppState.isProcessingIntent) {
         showToast('System busy, please wait...', 'warning');
         return;
     }
+    
+    AppState.isProcessingIntent = true;
     
     // Add hidden message to history
     const hiddenMessage = { role: 'user', content, hidden: true };
@@ -146,13 +154,14 @@ export async function sendHiddenMessage(content) {
         showToast('Oracular command failed', 'error');
     } finally {
         AppState.isStreaming = false;
+        AppState.isProcessingIntent = false;
     }
 }
 
 // Execute chat with automatic fallback
 async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
     const currentModel = AppState.currentModel;
-    if (attemptedModels.includes(currentModel)) throw new Error('All fallbacks failed');
+    if (attemptedModels.includes(currentModel) && !AppState.useLocalModel) throw new Error('All fallbacks failed');
     attemptedModels.push(currentModel);
     
     let fullText = '';
@@ -205,7 +214,11 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
         
         let response;
 
-        if (currentModel.startsWith('grok-')) {
+        // --- ROUTING LOGIC ---
+        if (AppState.useLocalModel) {
+            console.log('[AI] Routing to Local LLM Engine...');
+            response = await askLocalLLM(messagesToSend, AppState.temperature);
+        } else if (currentModel.startsWith('grok-')) {
             aiMessageElement.innerHTML = '<span class="loading loading-dots loading-sm"></span>';
             // Grok uses stateful conversation ID on backend, so we pass the latest prompt
             const lastUserMsg = AppState.messages[AppState.messages.length - 1];

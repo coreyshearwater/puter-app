@@ -41,8 +41,8 @@ export function createAIMessageElement() {
     bubble.className = 'message-bubble message-ai slide-in';
     bubble.style.position = 'relative';
     bubble.innerHTML = `
-        <span class="streaming-cursor"></span>
-        <button class="stop-gen-btn" onclick="window.gravityChat.stopGeneration()" title="Stop generating">
+        <!-- <span class="streaming-cursor"></span> -->
+        <button class="stop-gen-btn" onclick="window.gravityChat.stopGeneration()" title="Stop generating" aria-label="Stop AI generation">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
         </button>
     `;
@@ -59,7 +59,10 @@ export async function clearChat() {
     showConfirmModal(
         'Clear Chat History', 
         'This will wipe all messages from the current workspace. This action cannot be undone.', 
-        () => {
+        async () => {
+            const { stopSpeech } = await import('../services/voice.js');
+            stopSpeech();
+            
             AppState.messages = [];
             const container = document.getElementById('messages-container');
             if (container) container.innerHTML = '';

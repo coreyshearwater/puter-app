@@ -1,6 +1,6 @@
-# GravityChat - Your Personal AI Workstation (v2.4.0 "Live Roster")
+# All Seeing Cat - Your Personal AI Workstation (v2.6.1 "A New Perspective")
 
-GravityChat is a powerful, modular AI workstation that runs entirely in your browser. Built with **Puter.js v2**, it provides a complete OS-like experience with zero backend setup required.
+All Seeing Cat is a powerful, modular AI workstation that runs entirely in your browser. Built with **Puter.js v2**, it provides a complete OS-like experience with zero backend setup required, now featuring a clean, frameless UI and enhanced file management.
 
 ![GravityChat Preview](https://github.com/user-attachments/assets/placeholder)
 
@@ -12,10 +12,17 @@ GravityChat is a powerful, modular AI workstation that runs entirely in your bro
 - **Smart Fallback:** Automatically switches models if one is unavailable or rate-limited.
 - **Streaming:** Real-time typewriter responses with full Markdown & Code Highlighting.
 
+### 🧠 Local Intelligence (Privacy First)
+
+- **Offline AI:** Run GGUF models locally on your GPU using `llama-cpp-python`.
+- **Privacy:** Your data never leaves your machine when using local models.
+- **Model Manager:** Download and manage models directly from Hugging Face with a dedicated UI.
+
 ### 🎤 Voice Interaction
 
+- **Voice Browser:** Explore 300+ high-quality voices (Microsoft Edge TTS, AWS Polly).
 - **Speech-to-Text:** Click the microphone to dictate your prompts.
-- **Text-to-Speech:** AI reads responses aloud (Nova, Alloy, Echo voices).
+- **Text-to-Speech:** Real-time streaming response reading with interruption handling.
 - **Auto-Speak:** Toggle hands-free mode in Settings.
 
 ### 🎭 Custom Personas
@@ -98,6 +105,8 @@ Open `http://localhost:8000/index.html` in your browser.
 
 ## 🔧 Technology Stack
 
+- **Electron** - Native Desktop Wrapper
+- **Python / FastAPI** - Local Backend (LLM, TTS, Grok Bridge)
 - **Puter.js v2** - Cloud OS APIs (AI, FS, Auth, KV)
 - **Tailwind CSS** - Utility-first styling
 - **DaisyUI** - Cyberpunk theme components

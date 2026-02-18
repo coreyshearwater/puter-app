@@ -23,45 +23,26 @@ export function renderSettings() {
             </div>
             <label class="flex items-center justify-between p-3 glass-card cursor-pointer">
                 <span class="text-sm">Allow AI Emojis</span>
-                <input type="checkbox" id="emoji-toggle" class="toggle toggle-sm toggle-accent" ${AppState.allowEmojis ? 'checked' : ''} />
-            </label>
-        </div>
-        <div class="divider"></div>
-        <div>
-            <label class="text-sm font-semibold mb-2 block">Grok Automation</label>
-            <p class="text-[10px] text-gray-400 mb-3 italic leading-tight">
-                Grok 4.20 requires a valid session. Log in once via the app browser to enable zero-touch automation.
-            </p>
-            <div class="space-y-3">
-                <button id="btn-grok-login" onclick="window.open('https://grok.com', '_blank')" class="btn btn-xs btn-neon w-full" title="Open Grok in bundled browser to authenticate">
-                    🔑 Authenticate in Browser
-                </button>
-                
-                <div class="collapse collapse-arrow bg-black/20 rounded-lg">
-                    <input type="checkbox" id="grok-advanced-toggle" class="peer" /> 
-                    <div class="collapse-title text-[10px] font-bold py-2 min-h-0 text-gray-400">
-                        ADVANCED (MANUAL)
-                    </div>
-                    <div class="collapse-content space-y-2 !pb-3">
-                        <div class="flex items-center gap-2">
-                            <input type="text" id="grok-sso" placeholder="sso" value="${AppState.grokCookies?.sso || ''}" 
-                                   class="input input-bordered input-xs flex-1 font-mono text-[10px]" />
-                            <input type="text" id="grok-sso-rw" placeholder="sso-rw" value="${AppState.grokCookies?.['sso-rw'] || ''}" 
-                                   class="input input-bordered input-xs flex-1 font-mono text-[10px]" />
-                        </div>
-                        <button id="btn-magic-paste-cookies" class="btn btn-xs btn-outline border-fuchsia-500/30 text-fuchsia-400 w-full" title="Parse raw cookies from clipboard">
-                            ✨ Magic Paste
-                        </button>
+                <div class="custom-toggle" id="emoji-toggle-btn" style="width: 60px; height: 20px;">
+                     <div class="flex h-full items-center relative z-10 w-full">
+                        <span class="toggle-label active-text text-[8px]" data-val="off">OFF</span>
+                        <span class="toggle-label inactive-text text-[8px]" data-val="on">ON</span>
                     </div>
                 </div>
-            </div>
+            </label>
         </div>
+
         <div class="divider"></div>
         <div>
             <label class="text-sm font-semibold mb-2 block">Voice Settings</label>
             <label class="flex items-center justify-between p-3 glass-card cursor-pointer mb-3">
                 <span class="text-sm">Auto-speak responses</span>
-                <input type="checkbox" id="auto-speak-toggle" class="toggle toggle-sm toggle-primary" ${AppState.autoSpeak ? 'checked' : ''} />
+                <div class="custom-toggle" id="auto-speak-toggle-btn" style="width: 60px; height: 20px;">
+                     <div class="flex h-full items-center relative z-10 w-full">
+                        <span class="toggle-label active-text text-[8px]" data-val="mute">MUTE</span>
+                        <span class="toggle-label inactive-text text-[8px]" data-val="talk">TALK</span>
+                    </div>
+                </div>
             </label>
             <div class="mb-3">
                 <label class="text-xs text-gray-400 mb-1 block">TTS Voice</label>
@@ -114,9 +95,37 @@ export function renderSettings() {
                     <button id="btn-export-chat" class="btn btn-sm btn-outline border-cyan-500/30 text-cyan-400 font-medium text-xs uppercase" title="Save current chat as .md file">Export</button>
                     <button id="btn-clear-chat" class="btn btn-sm btn-outline border-red-500/30 text-red-400 font-medium text-xs uppercase" title="Wipe current chat history">Clear</button>
                 </div>
-                <button id="btn-reset-defaults" class="btn btn-sm btn-outline border-orange-500/30 text-orange-400 font-medium text-xs uppercase w-full">Reboot Core (Reset)</button>
             </div>
             <p class="text-[9px] text-gray-500 mt-3 text-center italic">"Export" saves chat as Markdown. "Clear" wipes history.</p>
+        </div>
+        <div class="divider"></div>
+        <div class="collapse collapse-arrow rounded-lg border" style="background: var(--bg-elevated); border-color: var(--glass-border); opacity: 0.8;">
+            <input type="checkbox" /> 
+            <div class="collapse-title text-sm font-semibold min-h-0 py-2" style="color: #9ca3af;">
+                Advanced / Debug
+            </div>
+            <div class="collapse-content px-2 pb-2">
+                <div class="space-y-2 pt-2">
+                    <button id="btn-reset-defaults" class="btn btn-xs btn-outline font-medium text-[10px] uppercase w-full h-auto py-1" style="border-color: var(--neon-orange); color: var(--neon-orange);">Reboot Core (Reset)</button>
+                    
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-dark); border-color: var(--glass-border);">
+                        <label class="text-[9px] font-bold block mb-1 uppercase tracking-widest leading-none" style="color: var(--text-muted);">Manual Cookies</label>
+                        <div class="flex flex-col gap-1 mb-1">
+                            <input type="text" id="grok-sso" placeholder="sso token" value="${AppState.grokCookies?.sso || ''}" 
+                                   class="input input-bordered input-xs w-full h-6 font-mono text-[9px] px-1" 
+                                   style="background: var(--bg-void); border-color: var(--glass-border); color: var(--text-bright);" />
+                            <input type="text" id="grok-sso-rw" placeholder="sso-rw" value="${AppState.grokCookies?.['sso-rw'] || ''}" 
+                                   class="input input-bordered input-xs w-full h-6 font-mono text-[9px] px-1" 
+                                   style="background: var(--bg-void); border-color: var(--glass-border); color: var(--text-bright);" />
+                        </div>
+                        <button id="btn-magic-paste-cookies" class="btn btn-xs btn-outline w-full h-6 min-h-0 text-[10px]" 
+                                style="border-color: var(--neon-primary); color: var(--neon-primary); opacity: 0.7;"
+                                title="Parse raw cookies from clipboard">
+                            ✨ Magic Paste Cookies
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
 
@@ -171,16 +180,45 @@ function setupSettingsListeners() {
     };
     document.getElementById('theme-selector').onchange = (e) => applyTheme(e.target.value);
     
-    document.getElementById('emoji-toggle').onchange = (e) => {
-        AppState.allowEmojis = e.target.checked;
-        saveStateToKV();
-        showToast(`AI Emojis ${AppState.allowEmojis ? 'enabled' : 'disabled'}`, 'info');
+    // --- NEW TOGGLE LOGIC ---
+    const setupToggle = (id, initialState, onToggle) => {
+        const toggle = document.getElementById(id);
+        if (!toggle) return;
+        
+        // Initial State
+        if (initialState) toggle.classList.add('checked');
+        
+        const updateVisuals = () => {
+            const isChecked = toggle.classList.contains('checked');
+            const labels = toggle.querySelectorAll('.toggle-label');
+            if (labels[0]) { // Off/Mute
+                labels[0].classList.toggle('active-text', !isChecked);
+                labels[0].classList.toggle('inactive-text', isChecked);
+            }
+            if (labels[1]) { // On/Talk
+                labels[1].classList.toggle('active-text', isChecked);
+                labels[1].classList.toggle('inactive-text', !isChecked);
+            }
+        };
+        updateVisuals();
+
+        toggle.onclick = () => {
+             toggle.classList.toggle('checked');
+             updateVisuals();
+             onToggle(toggle.classList.contains('checked'));
+        };
     };
 
-    document.getElementById('auto-speak-toggle').onchange = (e) => {
-        AppState.autoSpeak = e.target.checked;
+    setupToggle('emoji-toggle-btn', AppState.allowEmojis, (isChecked) => {
+        AppState.allowEmojis = isChecked;
         saveStateToKV();
-    };
+    });
+
+    setupToggle('auto-speak-toggle-btn', AppState.autoSpeak, (isChecked) => {
+        AppState.autoSpeak = isChecked;
+        saveStateToKV();
+        if (isChecked && !AppState.selectedVoice) showToast('Auto-speak enabled (Voice: Joanna)', 'info');
+    });
     document.getElementById('temperature-slider').oninput = (e) => {
         let val = parseFloat(e.target.value);
         

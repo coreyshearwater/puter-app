@@ -234,6 +234,15 @@ function renderVoiceList() {
 }
 
 export async function openVoiceBrowser() {
+    const { stopRecording, stopSpeech } = await import('../services/voice.js');
+    
+    // Stop active speech and suspend microphone
+    stopSpeech();
+    AppState.voiceSuspended = true;
+    if (AppState.isRecording) {
+        stopRecording();
+    }
+
     previousVoice = AppState.selectedVoice; // Save for cancel
     const edgePromise = fetchEdgeVoices();
 
@@ -270,7 +279,7 @@ export async function openVoiceBrowser() {
             <!-- Search + Filter -->
             <div class="flex gap-2 px-6 pt-3 relative z-10">
                 <input id="vb-search" type="text" placeholder="Search voices..." class="flex-1 input input-sm bg-black/30 border-white/10 text-xs focus:border-cyan-400" />
-                <select id="vb-lang-filter" class="select select-sm bg-black/30 border-white/10 text-xs w-24"></select>
+                <select id="vb-lang-filter" class="select select-sm bg-black/40 border border-white/10 text-xs text-gray-300 focus:border-cyan-400 focus:outline-none w-32 rounded-lg backdrop-blur-md"></select>
             </div>
             
             <!-- Voice List -->
@@ -337,8 +346,18 @@ export async function openVoiceBrowser() {
     renderVoiceList();
 }
 
-export function closeVoiceBrowser() {
+export async function closeVoiceBrowser() {
+    const { startRecording } = await import('../services/voice.js');
+    
+    // Resume microphone if it was suspended
+    AppState.voiceSuspended = false;
+    
     stopPreview();
     const modal = document.getElementById('voice-browser-modal');
     if (modal) modal.remove();
+
+    // If we are in a voice session, resume listening immediately
+    if (AppState.isVoiceSession && !AppState.isRecording && !AppState.isSpeakingAudio) {
+        setTimeout(() => startRecording(), 300);
+    }
 }
