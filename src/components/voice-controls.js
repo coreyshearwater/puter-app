@@ -1,6 +1,8 @@
 let statusTimer = null;
 let originalSendBtnHTML = null;
 
+import { AppState } from '../state/state.js';
+
 export function setVoiceStatus(text, autoHideMs = 0) {
     const statusEl = document.getElementById('voice-status');
     const textEl = document.getElementById('voice-status-text');

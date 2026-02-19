@@ -3,6 +3,7 @@ import { showToast } from '../utils/toast.js';
 import { loadVoices as loadEngineVoices, speakText as engineSpeakText, stopHardwareAudio, captureAudio, stopHardwareMic } from './voice/engine.js';
 import { handleQueueSpeech, stopAllSpeech, transcribeAndAction, waitForAIIdle } from './voice/logic.js';
 import { setVoiceStatus, updateMicButton } from '../components/voice-controls.js';
+import { Logger } from '../utils/logger.js';
 
 export function loadVoices() {
     loadEngineVoices();
@@ -58,7 +59,7 @@ export async function startRecording() {
             }
         );
     } catch (error) {
-        console.error('Mic failed:', error);
+        Logger.error('Voice', 'Mic failed:', error);
         showToast('Microphone access denied', 'error');
         AppState.isRecording = false;
         updateMicButton(false);

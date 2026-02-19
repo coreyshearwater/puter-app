@@ -1,4 +1,4 @@
-import { AppState, DEFAULT_PERSONAS } from '../../state.js';
+import { AppState, DEFAULT_PERSONAS } from '../../state/state.js';
 import { saveStateToKV } from '../../services/storage.js';
 import { showToast } from '../../utils/toast.js';
 import { updatePersonaHeader } from '../oracular.js';

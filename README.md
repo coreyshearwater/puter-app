@@ -1,4 +1,4 @@
-# All Seeing Cat - Your Personal AI Workstation (v2.6.1 "A New Perspective")
+# All Seeing Cat - Your Personal AI Workstation (v2.6.2 "Polished Reliability")
 
 All Seeing Cat is a powerful, modular AI workstation that runs entirely in your browser. Built with **Puter.js v2**, it provides a complete OS-like experience with zero backend setup required, now featuring a clean, frameless UI and enhanced file management.
 

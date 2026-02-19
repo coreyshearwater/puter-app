@@ -1,5 +1,6 @@
 import { AppState } from '../state/state.js';
 import { showToast } from '../utils/toast.js';
+import { Logger } from '../utils/logger.js';
 
 /**
  * Recursively indexes the current project path.
@@ -7,7 +8,7 @@ import { showToast } from '../utils/toast.js';
  */
 export async function indexProject(path = AppState.currentPath) {
     showToast(`Indexing: ${path}`, 'info');
-    console.log(`🧠 Neural Memory: Starting index for [${path}]`);
+    Logger.info('Memory', `Starting index for [${path}]`);
 
     const projectMap = {
         indexedAt: new Date().toISOString(),
@@ -44,7 +45,7 @@ export async function indexProject(path = AppState.currentPath) {
                 }
             }
         } catch (e) { 
-            console.warn(`🧠 Neural Memory: Access denied or failed for ${targetPath}`); 
+            Logger.warn('Memory', `Access denied or failed for ${targetPath}`); 
         }
     }
 
@@ -59,9 +60,9 @@ export async function indexProject(path = AppState.currentPath) {
         await puter.kv.set('gravitychat_project_index', JSON.stringify(projectMap));
         AppState.projectIndex = projectMap;
         showToast(`Indexed ${projectMap.files.length} files in ${path}`, 'success');
-        console.log(`🧠 Neural Memory: Index complete. Found ${projectMap.files.length} files.`);
+        Logger.info('Memory', `Index complete. Found ${projectMap.files.length} files.`);
     } catch (error) {
-        console.error('Indexing Error:', error);
+        Logger.error('Memory', 'Indexing Error:', error);
         showToast('Indexing failed. Check console.', 'error');
     }
 }
@@ -87,7 +88,7 @@ export async function loadIndexFromKV() {
         const data = await puter.kv.get('gravitychat_project_index');
         if (data) {
             AppState.projectIndex = JSON.parse(data);
-            console.log('🧠 Neural Memory loaded from KV');
+            Logger.info('Memory', 'Neural Memory loaded from KV');
         }
     } catch (e) { /* ignore quiet fail */ }
 }

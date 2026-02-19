@@ -1,4 +1,5 @@
-import { AppState } from '../state.js';
+import { AppState } from '../state/state.js';
+import { saveStateToKV } from '../services/storage.js';
 
 export function renderMediaLab() {
     const modal = document.getElementById('media-lab-modal');
@@ -43,6 +44,14 @@ export function renderMediaLab() {
     `;
 
     modal.style.display = 'flex';
+}
+
+export function setMediaParam(key, value) {
+    if (!AppState.mediaParams) initMediaParams();
+    AppState.mediaParams[key] = value;
+    saveStateToKV();
+    // Re-render UI to update button states
+    renderMediaLab();
 }
 
 export function initMediaParams() {

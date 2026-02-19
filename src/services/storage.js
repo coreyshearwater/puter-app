@@ -1,4 +1,5 @@
 import { AppState } from '../state/state.js';
+import { Logger } from '../utils/logger.js';
 
 let saveTimeout = null;
 
@@ -32,9 +33,9 @@ export async function saveStateToKV() {
             await puter.kv.set('gravitychat_active_persona', AppState.activePersona?.id || null);
             await puter.kv.set('gravitychat_settings', JSON.stringify(stateSnapshot));
             
-            console.log('✅ State saved to puter.kv [Debounced]');
+            Logger.info('Storage', 'State saved to puter.kv [Debounced]');
         } catch (error) {
-            console.warn('Failed to save to puter.kv:', error);
+            Logger.warn('Storage', 'Failed to save to puter.kv:', error);
             
             try {
                 // Fallback to localStorage
@@ -42,7 +43,7 @@ export async function saveStateToKV() {
                 localStorage.setItem('gravitychat_active_persona', AppState.activePersona?.id || null);
                 localStorage.setItem('gravitychat_settings', JSON.stringify(stateSnapshot));
             } catch (localError) {
-                console.error('LocalStorage failed:', localError);
+                Logger.error('Storage', 'LocalStorage failed:', localError);
             }
         }
     }, 1000); // 1-second debounce
@@ -104,9 +105,9 @@ export async function loadStateFromKV() {
             AppState.activePersona = null;
         }
         
-        console.log('✅ State loaded from puter.kv');
+        Logger.info('Storage', 'State loaded from puter.kv');
     } catch (error) {
-        console.warn('Failed to load from puter.kv, trying localStorage:', error);
+        Logger.warn('Storage', 'Failed to load from puter.kv, trying localStorage:', error);
         // Fallback to localStorage
         try {
             const personasData = localStorage.getItem('gravitychat_personas');
@@ -140,7 +141,7 @@ export async function loadStateFromKV() {
                 if (settings.oracularModes) AppState.oracularModes = settings.oracularModes;
             }
         } catch (localError) {
-            console.warn('localStorage fallback also failed:', localError);
+            Logger.warn('Storage', 'localStorage fallback also failed:', localError);
         }
     }
 }

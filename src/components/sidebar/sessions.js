@@ -1,4 +1,4 @@
-import { AppState } from '../../state.js';
+import { AppState } from '../../state/state.js';
 import { clearChat, renderMessage } from '../chat.js';
 import { saveStateToKV } from '../../services/storage.js';
 import { showConfirmModal } from '../../utils/modals.js';

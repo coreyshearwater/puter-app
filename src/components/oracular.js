@@ -1,4 +1,4 @@
-import { AppState } from '../state.js';
+import { AppState } from '../state/state.js';
 import { saveStateToKV } from '../services/storage.js';
 import { sendHiddenMessage } from '../services/ai.js';
 import { showToast } from '../utils/toast.js';

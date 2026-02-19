@@ -1,4 +1,4 @@
-import { AppState } from '../state.js';
+import { AppState } from '../state/state.js';
 import { sendMessage } from '../services/ai.js';
 import { toggleVoiceSession, stopSpeech } from '../services/voice.js';
 

@@ -2,6 +2,22 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.6.2] - "Polished Reliability" - 2026-02-19
+
+### Highlights
+
+- **Centralized Logger**: Added `src/utils/logger.js`. Integrated into all core services (`ai`, `voice`, `storage`, `local-llm`, `memory`) for professional-grade observability and debugging.
+- **Improved UX**: Added built-in loading spinners specifically for AI response bubbles. Users now get immediate feedback before streaming begins.
+- **Accessibility (Step 5)**: Comprehensive ARIA label audit for all functional buttons and enhanced modal roles for better screen reader compatibility.
+- **Audit Fixes**:
+  - Resolved broken relative imports across modularized components (`concatenated path errors`).
+  - Hardened Sandbox (The Executioner) against XSS by switching to `textContent` for program output.
+  - Fully restored Media Lab (Step 7) by implementing `setMediaParam` and binding it to global namespace.
+  - Implemented state pruning for `AppState.messages` (Step 10) to prevent KV storage overflow.
+  - Integrated Media Lab parameters into AI image and video generation prompts.
+- **UI Architecture**: Moved legacy inline styles from `index.html` into structured CSS. Updated app-wide versioning to sync with `package.json`.
+- **Premium Aesthetics**: Added micro-animations, pulsing glows for model status indicators, and smooth transition logic for sidebar interactions.
+
 ## [v2.6.1] - "A New Perspective" - 2026-02-18
 
 ### UI / UX

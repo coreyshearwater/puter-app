@@ -11,6 +11,7 @@ import { askLocalLLM } from './local-llm.js';
 import { showErrorModal, showInfoModal } from '../utils/modals.js';
 import { saveStateToKV } from './storage.js';
 import { syncCurrentSession } from '../components/sidebar/sessions.js';
+import { Logger } from '../utils/logger.js';
 
 const FREE_FALLBACK_CHAIN = [
     'gpt-4o-mini',          // Direct Puter model — very reliable
@@ -28,7 +29,7 @@ const MAX_CONTEXT_MESSAGES = 20;
 export function stopGeneration() {
     AppState._abortStream = true;
     stopSpeech();
-    console.info('[AI] Stop generation requested');
+    Logger.info('AI', 'Stop generation requested');
 }
 
 // Diagnostic: Test which Puter models actually work
@@ -52,17 +53,16 @@ export async function diagnosePuterModels() {
                 timeout
             ]);
             const text = typeof res === 'string' ? res : (res?.message?.content || res?.text || JSON.stringify(res).substring(0, 100));
-            console.info(`  ✅ ${test.label}: "${text}"`);
+            Logger.info('AI', `  ✅ ${test.label}: "${text}"`);
             results.push({ model: test.label, status: 'OK', response: text });
         } catch (err) {
             const msg = err?.error || err?.message || JSON.stringify(err);
-            console.error(`  ❌ ${test.label}: ${msg}`);
+            Logger.error('AI', `  ❌ ${test.label}: ${msg}`);
             results.push({ model: test.label, status: 'FAIL', error: msg });
         }
     }
 
-    const passed = results.filter(r => r.status === 'OK').length;
-    console.warn(`═══ DIAGNOSTIC DONE: ${passed}/${results.length} passed ═══`);
+    Logger.warn('AI', `═══ DIAGNOSTIC DONE: ${passed}/${results.length} passed ═══`);
     console.table(results);
     return results;
 }
@@ -78,10 +78,10 @@ export async function sendMessage() {
     if (AppState.isStreaming) {
         const stuckMs = Date.now() - (AppState._streamStartedAt || 0);
         if (stuckMs > 30000) {
-            console.warn(`[AI] Force-resetting stuck isStreaming (stuck for ${(stuckMs/1000).toFixed(0)}s)`);
+            Logger.warn('AI', `Force-resetting stuck isStreaming (stuck for ${(stuckMs/1000).toFixed(0)}s)`);
             AppState.isStreaming = false;
         } else {
-            console.warn('[AI] sendMessage blocked: isStreaming or isProcessingIntent is true');
+            Logger.warn('AI', 'sendMessage blocked: isStreaming or isProcessingIntent is true');
             return;
         }
     }
@@ -121,7 +121,7 @@ export async function sendMessage() {
             await executeChatWithFallback(aiMessageElement);
         }
     } catch (error) {
-        console.error('Chat error:', error.message || error);
+        Logger.error('AI', 'Chat error:', error.message || error);
         if (aiMessageElement) aiMessageElement.remove();
         showErrorModal('Provider Notification', error.message || 'The AI service encountered an issue. Please try again or switch models.');
     } finally {
@@ -149,7 +149,7 @@ export async function sendHiddenMessage(content) {
     try {
         await executeChatWithFallback(aiMessageElement);
     } catch (error) {
-        console.error('Hidden message error:', error);
+        Logger.error('AI', 'Hidden message error:', error);
         if (aiMessageElement) aiMessageElement.remove();
         showToast('Oracular command failed', 'error');
     } finally {
@@ -216,10 +216,9 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
 
         // --- ROUTING LOGIC ---
         if (AppState.useLocalModel) {
-            console.log('[AI] Routing to Local LLM Engine...');
+            Logger.info('AI', 'Routing to Local LLM Engine...');
             response = await askLocalLLM(messagesToSend, AppState.temperature);
         } else if (currentModel.startsWith('grok-')) {
-            aiMessageElement.innerHTML = '<span class="loading loading-dots loading-sm"></span>';
             // Grok uses stateful conversation ID on backend, so we pass the latest prompt
             const lastUserMsg = AppState.messages[AppState.messages.length - 1];
             // Pass true for streaming and current temperature
@@ -227,21 +226,21 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
         } else {
             // Standard Puter AI (Stateless, sends history)
             const useDefaultTemp = currentModel.includes('gpt-5');
-            console.info(`[AI] Calling puter.ai.chat with model=${currentModel}, msgs=${messagesToSend.length}, temp=${useDefaultTemp ? 1 : AppState.temperature}`);
+            Logger.info('AI', `Calling puter.ai.chat with model=${currentModel}, msgs=${messagesToSend.length}, temp=${useDefaultTemp ? 1 : AppState.temperature}`);
             response = await puter.ai.chat(messagesToSend, {
                 model: currentModel,
                 stream: true,
                 temperature: useDefaultTemp ? 1 : AppState.temperature,
                 max_tokens: AppState.maxTokens,
             });
-            console.info(`[AI] puter.ai.chat returned response type: ${typeof response}`);
+            Logger.info('AI', `puter.ai.chat returned response type: ${typeof response}`);
         }
         
         // Unified Streaming Loop
         AppState._abortStream = false;
         for await (const chunk of response) {
             if (AppState._abortStream) {
-                console.info(`[AI] Stream aborted by user after ${chunkCount} chunks`);
+                Logger.info('AI', `Stream aborted by user after ${chunkCount} chunks`);
                 break;
             }
             if (chunk.text) {
@@ -263,12 +262,15 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
                 if (!window.updatePending) {
                     window.updatePending = true;
                     requestAnimationFrame(() => {
+                        // Clear loader on first actual text chunk
                         aiMessageElement.innerHTML = renderMarkdown(fullText, true) + '<span class="streaming-cursor"></span>';
-                        // Re-add stop button (innerHTML wipes it)
+                        
+                        // Re-add stop button and ensure it's visible
                         if (AppState.isStreaming && !AppState._abortStream) {
                             const btn = document.createElement('button');
                             btn.className = 'stop-gen-btn';
                             btn.title = 'Stop generating';
+                            btn.setAttribute('aria-label', 'Stop AI generation');
                             btn.onclick = () => window.gravityChat.stopGeneration();
                             btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
                             aiMessageElement.appendChild(btn);
@@ -304,17 +306,21 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
 
         // Only append to history if we actually got a response
         if (fullText.trim()) {
+            // Prune state to stay within Puter KV limits (keep last 50)
+            if (AppState.messages.length > 50) {
+                AppState.messages = AppState.messages.slice(-50);
+            }
             AppState.messages.push({ role: 'assistant', content: fullText });
+            saveStateToKV();
         }
         
         // Persist final response
         syncCurrentSession();
-        saveStateToKV();
         // Deprecated single-shot call, replaced by streaming queue above
         // speakText(fullText, aiMessageElement);
         
     } catch (error) {
-        console.error(`Model ${currentModel} failed:`, error);
+        Logger.error('AI', `Model ${currentModel} failed:`, error);
         
         // L10: If we have partial content from a mid-stream failure, preserve it
         if (fullText && fullText.trim()) {
@@ -344,7 +350,7 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             
             // SELF-HEALING: Check for moderation loop (persisted bad state)
             if (errorMsg.includes('moderation_failed')) {
-                console.warn('⚠️ Moderation Loop Detected. Initiating Self-Healing...');
+                Logger.warn('AI', '⚠️ Moderation Loop Detected. Initiating Self-Healing...');
                 showToast('Corruption detected. Auto-repairing...', 'warning');
                 
                 // Clear state and reload to fix the loop
@@ -359,18 +365,18 @@ async function executeChatWithFallback(aiMessageElement, attemptedModels = []) {
             if (candidates.length === 0) candidates = FREE_FALLBACK_CHAIN;
             else candidates = [...new Set([...candidates, ...FREE_FALLBACK_CHAIN])];
             
-            console.warn(`[AI Fallback] Attempted: [${attemptedModels.join(', ')}] | Candidates available: ${candidates.length}`);
+            Logger.warn('AI', `Fallback] Attempted: [${attemptedModels.join(', ')}] | Candidates available: ${candidates.length}`);
             
             const nextModel = candidates.find(id => !attemptedModels.includes(id));
             
             if (nextModel) {
-                console.warn(`[AI Fallback] Switching to: ${nextModel}`);
+                Logger.warn('AI', `Fallback] Switching to: ${nextModel}`);
                 showInfoModal('Model Switch', `The selected model failed to respond. Automatically switched to: ${nextModel}`);
                 AppState.currentModel = nextModel;
                 document.dispatchEvent(new CustomEvent('updateModelDisplay'));
                 return await executeChatWithFallback(aiMessageElement, attemptedModels);
             } else {
-                console.error('[AI Fallback] All candidates exhausted!');
+                Logger.error('AI', 'Fallback] All candidates exhausted!');
             }
         }
         throw error;
@@ -392,7 +398,11 @@ export async function generateImage(prompt) {
         
         const finalPrompt = `${style} style, ${prompt}`;
         // DOCUMENTATION AUDIT FIX: Docs specify txt2img(prompt, options)
-        const image = await puter.ai.txt2img(finalPrompt, { style, testMode: true });
+        const image = await puter.ai.txt2img(finalPrompt, { 
+            aspect_ratio: options.aspect_ratio, 
+            negative_prompt: options.negative_prompt,
+            style: style 
+        });
         
         const imgElement = document.createElement('img');
         imgElement.src = image.src;
@@ -401,11 +411,17 @@ export async function generateImage(prompt) {
         
         aiMessage.innerHTML = `<p><strong>Generate:</strong> ${prompt} <span class="text-[10px] text-gray-500">(${aspectRatio} ${style})</span></p>`;
         aiMessage.appendChild(imgElement);
+        
+        // Prune older messages if needed (keep last 50 for context & storage safety)
+        if (AppState.messages.length > 50) {
+            AppState.messages = AppState.messages.slice(-50);
+        }
+        
         AppState.messages.push({ role: 'assistant', content: `[Generated Image: ${prompt}](${image.src})` });
         showToast('Image generated!', 'success');
         scrollToBottom('chat-area');
     } catch (error) {
-        console.error('Image gen error:', error);
+        Logger.error('AI', 'Image gen error:', error);
         aiMessage.innerHTML = `<p class="text-red-400">Image Generation Failed: ${error.message}</p>`;
     }
 }
@@ -425,7 +441,7 @@ export async function generateVideo(prompt) {
         
         const finalPrompt = `${style} style, ${prompt}`;
         // test: true for dev, but we'll use actual params
-        const video = await puter.ai.txt2vid(finalPrompt, true); 
+        const video = await puter.ai.txt2vid(finalPrompt, options); 
         
         aiMessage.innerHTML = `<p><strong>Video Prompt:</strong> ${prompt} <span class="text-[10px] text-gray-500">(${aspectRatio} ${style})</span></p>`;
         
@@ -436,11 +452,17 @@ export async function generateVideo(prompt) {
         videoElement.autoplay = false;
         
         aiMessage.appendChild(videoElement);
+        
+        // Prune older messages if needed
+        if (AppState.messages.length > 50) {
+            AppState.messages = AppState.messages.slice(-50);
+        }
+        
         AppState.messages.push({ role: 'assistant', content: `[Generated Video: ${prompt}](${video.src})` });
         showToast('Video generated!', 'success');
         scrollToBottom('chat-area');
     } catch (error) {
-        console.error('Video gen error:', error);
+        Logger.error('AI', 'Video gen error:', error);
         aiMessage.innerHTML = `<p class="text-red-400">Video Generation Failed: ${error.message}</p>`;
         showToast('Video failed', 'error');
     }
@@ -462,7 +484,7 @@ export async function performOCR(file) {
             showToast('No readable text found in image', 'warning');
         }
     } catch (error) {
-        console.error('OCR Error:', error);
+        Logger.error('AI', 'OCR Error:', error);
         showToast('Scan failed', 'error');
     }
 }

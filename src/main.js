@@ -9,13 +9,14 @@ import { loadVoices } from './services/voice.js';
 import { loadFiles, previewFile, deleteFile, createNewFile, createNewFolder } from './services/file-manager.js';
 import { setupInputListeners, removeAttachment } from './components/input.js';
 import { clearChat, exportChat } from './components/chat.js';
-import { renderMediaLab, initMediaParams } from './components/media-lab.js';
+import { renderMediaLab, initMediaParams, setMediaParam } from './components/media-lab.js';
 import { indexProject, loadIndexFromKV } from './services/memory.js';
 import { applyTheme } from './utils/theme.js';
 import { executeInSandbox } from './services/sandbox.js';
 import { showToast } from './utils/toast.js';
 import { diagnosePuterModels, stopGeneration } from './services/ai.js';
 import { openVoiceBrowser } from './components/voice-browser.js';
+import { Logger } from './utils/logger.js';
 
 // Namespace for global access (legacy support for string templates)
 window.gravityChat = Object.assign(window.gravityChat || {}, {
@@ -63,18 +64,33 @@ window.gravityChat = Object.assign(window.gravityChat || {}, {
             outputDiv.className = 'sandbox-output glass-card p-3 mt-2 text-xs font-mono slide-in';
             outputDiv.style.borderLeft = result.exitCode === 0 ? '4px solid var(--neon-green)' : '4px solid var(--neon-orange)';
             
-            let content = '';
-            if (result.stdout) content += `<div class="text-gray-300">${result.stdout}</div>`;
-            if (result.stderr) content += `<div class="text-red-400 mt-1">${result.stderr}</div>`;
-            if (!result.stdout && !result.stderr) content += `<div class="text-gray-500 italic">Program exited with code ${result.exitCode} (no output)</div>`;
+            const contentDiv = document.createElement('div');
+            if (result.stdout) {
+                const out = document.createElement('div');
+                out.className = 'text-gray-300';
+                out.innerText = result.stdout;
+                contentDiv.appendChild(out);
+            }
+            if (result.stderr) {
+                const err = document.createElement('div');
+                err.className = 'text-red-400 mt-1';
+                err.innerText = result.stderr;
+                contentDiv.appendChild(err);
+            }
+            if (!result.stdout && !result.stderr) {
+                const empty = document.createElement('div');
+                empty.className = 'text-gray-500 italic';
+                empty.innerText = `Program exited with code ${result.exitCode} (no output)`;
+                contentDiv.appendChild(empty);
+            }
             
             outputDiv.innerHTML = `
                 <div class="flex justify-between mb-1">
                     <span class="text-[8px] uppercase tracking-widest text-gray-500">Output (${lang})</span>
                     <button class="text-gray-500 hover:text-white" onclick="this.closest('.sandbox-output').remove()">×</button>
                 </div>
-                ${content}
             `;
+            outputDiv.appendChild(contentDiv);
             pre.after(outputDiv);
         }
     },
@@ -84,6 +100,7 @@ window.gravityChat = Object.assign(window.gravityChat || {}, {
         saveStateToKV();
     },
     openMediaLab: () => renderMediaLab(),
+    setMediaParam,
     closeMediaLab: () => {
         const modal = document.getElementById('media-lab-modal');
         if (modal) modal.style.display = 'none';
@@ -91,25 +108,25 @@ window.gravityChat = Object.assign(window.gravityChat || {}, {
 });
 
 async function init() {
-    console.log('GravityChat initializing...');
+    Logger.info('Main', 'GravityChat initializing...');
     
     try {
-        console.log('1. Calling initMediaParams...');
+        Logger.info('Main', '1. Calling initMediaParams...');
         initMediaParams();
-        console.log('2. initMediaParams done.');
-    } catch (e) { console.error('initMediaParams failed', e); }
+        Logger.info('Main', '2. initMediaParams done.');
+    } catch (e) { Logger.error('Main', 'initMediaParams failed', e); }
     
     // Auth Check
     try {
         if (typeof puter === 'undefined') {
-             console.error('CRITICAL: puter is undefined!');
+             Logger.error('Main', 'CRITICAL: puter is undefined!');
              showToast('Puter API missing', 'error');
              return;
         }
 
         const signedIn = await puter.auth.isSignedIn();
         if (!signedIn) {
-            console.log('User not signed in. Showing Auth Overlay.');
+            Logger.info('Main', 'User not signed in. Showing Auth Overlay.');
             // Dismiss loading overlay so auth screen is visible
             const loadOverlay = document.getElementById('loading-overlay');
             if (loadOverlay) { loadOverlay.style.opacity = '0'; setTimeout(() => loadOverlay.remove(), 400); }
@@ -118,14 +135,14 @@ async function init() {
         }
 
         const user = await puter.auth.getUser();
-        console.log(`Authenticated as ${user.username}`);
+        Logger.info('Main', `Authenticated as ${user.username}`);
         showToast(`Welcome back, ${user.username}`, 'success');
         
         // Continue with initialization
         await completeInit();
         
     } catch (e) { 
-        console.warn('Puter Auth failed', e);
+        Logger.warn('Main', 'Puter Auth failed', e);
         showToast('Auth error. Check console.', 'error');
     }
 }
@@ -161,7 +178,7 @@ function showAuthOverlay() {
             // Let's just refresh the page to be safe and clean
             window.location.reload();
         } catch (error) {
-            console.error('SignIn failed:', error);
+            Logger.error('Main', 'SignIn failed:', error);
             showToast('SignIn failed. Try again.', 'error');
         }
     };
@@ -172,56 +189,56 @@ async function completeInit() {
     try {
         await loadStateFromKV();
         await loadIndexFromKV();
-    } catch (e) { console.error('State loading failed', e); }
+    } catch (e) { Logger.error('Main', 'State loading failed', e); }
 
     // Event Listeners
     try {
         setupGlobalListeners();
         setupInputListeners();
-    } catch (e) { console.error('Listeners setup failed:', e?.message || e, e?.stack || ''); }
+    } catch (e) { Logger.error('Main', 'Listeners setup failed:', e?.message || e, e?.stack || ''); }
     
     // UI Init
     try {
-        console.log('Applying theme...');
+        Logger.info('Main', 'Applying theme...');
         applyTheme();
-    } catch (e) { console.error('applyTheme failed', e); }
+    } catch (e) { Logger.error('Main', 'applyTheme failed', e); }
 
     try {
-        console.log('Initializing personas...');
+        Logger.info('Main', 'Initializing personas...');
         initializePersonas();
-    } catch (e) { console.error('initializePersonas failed', e); }
+    } catch (e) { Logger.error('Main', 'initializePersonas failed', e); }
 
     try {
-        console.log('Initializing oracular controls...');
+        Logger.info('Main', 'Initializing oracular controls...');
         initializeOracularControls();
-    } catch (e) { console.error('initializeOracularControls failed', e); }
+    } catch (e) { Logger.error('Main', 'initializeOracularControls failed', e); }
 
     try {
-        console.log('Initializing sessions...');
+        Logger.info('Main', 'Initializing sessions...');
         initializeSessions();
-    } catch (e) { console.error('initializeSessions failed', e); }
+    } catch (e) { Logger.error('Main', 'initializeSessions failed', e); }
 
     try {
-        console.log('Rendering settings...');
+        Logger.info('Main', 'Rendering settings...');
         renderSettings();
-    } catch (e) { console.error('renderSettings failed', e); }
+    } catch (e) { Logger.error('Main', 'renderSettings failed', e); }
 
     try {
-        console.log('Loading voices...');
+        Logger.info('Main', 'Loading voices...');
         loadVoices();
-    } catch (e) { console.error('loadVoices failed', e); }
+    } catch (e) { Logger.error('Main', 'loadVoices failed', e); }
 
     try {
-        console.log('Loading files...');
+        Logger.info('Main', 'Loading files...');
         loadFiles(AppState.currentPath);
-    } catch (e) { console.error('loadFiles failed', e); }
+    } catch (e) { Logger.error('Main', 'loadFiles failed', e); }
 
     try {
-        console.log('Fetching models...');
+        Logger.info('Main', 'Fetching models...');
         await fetchModels();
-    } catch (e) { console.error('fetchModels failed', e); }
+    } catch (e) { Logger.error('Main', 'fetchModels failed', e); }
     
-    console.log('GravityChat Ready!');
+    Logger.info('Main', 'GravityChat Ready!');
 
     // Reveal app and remove loading overlay (prevents FOUC)
     const appContainer = document.getElementById('app-container');
@@ -401,4 +418,4 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
-window.addEventListener('error', (e) => console.error('Global error:', e));
+window.addEventListener('error', (e) => Logger.error('Global', e));

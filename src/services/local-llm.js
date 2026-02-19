@@ -1,6 +1,7 @@
 import { AppState } from '../state/state.js';
 import { showToast } from '../utils/toast.js';
 import { CONFIG } from '../state/config.js';
+import { Logger } from '../utils/logger.js';
 
 const LOCAL_LLM_URL = CONFIG.LOCAL_LLM_URL;
 
@@ -40,7 +41,7 @@ export async function listLocalModels() {
         const data = await response.json();
         return data.data || [];
     } catch (error) {
-        console.error('[LocalLLM] List models failed:', error);
+        Logger.error('LocalLLM', 'List models failed:', error);
         return [];
     }
 }
@@ -66,7 +67,7 @@ export async function searchHF(query) {
         }
         throw new Error('Backend unavailable');
     } catch (err) {
-        console.warn('[LocalLLM] Backend search failed, falling back to direct HF API:', err);
+        Logger.warn('LocalLLM', 'Backend search failed, falling back to direct HF API:', err);
         
         // Fallback: Direct HF API (Client-side)
         // Note: HF API allows direct CORS for read-only public endpoints usually.
@@ -82,7 +83,7 @@ export async function searchHF(query) {
                 tags: m.tags
             }));
         } catch (hfErr) {
-            console.error('[LocalLLM] Direct HF search failed:', hfErr);
+            Logger.error('LocalLLM', 'Direct HF search failed:', hfErr);
             showToast('Could not search HuggingFace (Offline?)', 'error');
             return [];
         }
@@ -129,7 +130,7 @@ export async function loadLocalModel(filename) {
         showToast('Local Model Loaded!', 'success');
         return true;
     } catch (error) {
-        console.error('[LocalLLM] Load failed:', error);
+        Logger.error('LocalLLM', 'Load failed:', error);
         showToast(`Load failed: ${error.message}`, 'error');
         return false;
     }
@@ -159,7 +160,7 @@ export async function deleteLocalModel(filename) {
         showToast(`Deleted ${filename}`, 'success');
         return true;
     } catch (error) {
-        console.error('[LocalLLM] Delete failed:', error);
+        Logger.error('LocalLLM', 'Delete failed:', error);
         showToast(`Failed to delete: ${error.message}`, 'error');
         return false;
     }

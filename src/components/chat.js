@@ -1,4 +1,4 @@
-import { AppState } from '../state.js';
+import { AppState } from '../state/state.js';
 import { renderMarkdown } from '../utils/markdown.js';
 import { scrollToBottom } from '../utils/dom.js';
 
@@ -41,8 +41,11 @@ export function createAIMessageElement() {
     bubble.className = 'message-bubble message-ai slide-in';
     bubble.style.position = 'relative';
     bubble.innerHTML = `
-        <!-- <span class="streaming-cursor"></span> -->
-        <button class="stop-gen-btn" onclick="window.gravityChat.stopGeneration()" title="Stop generating" aria-label="Stop AI generation">
+        <div class="ai-loading-placeholder py-1 flex items-center gap-2 text-xs text-gray-500 italic">
+            <span class="loading loading-dots loading-xs"></span>
+            Awaiting response...
+        </div>
+        <button class="stop-gen-btn hidden" onclick="window.gravityChat.stopGeneration()" title="Stop generating" aria-label="Stop AI generation">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
         </button>
     `;

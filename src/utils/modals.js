@@ -10,6 +10,10 @@ export function showErrorModal(title, message) {
     const modal = document.createElement('div');
     modal.className = 'glass-card max-w-md w-full p-6 shadow-2xl border-magenta-500/30 slide-in';
     modal.style.background = 'linear-gradient(135deg, rgba(20, 20, 30, 0.9) 0%, rgba(10, 10, 15, 0.95) 100%)';
+    modal.setAttribute('role', 'alertdialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'modal-title');
+    modal.setAttribute('aria-describedby', 'modal-message');
 
     modal.innerHTML = `
         <div class="flex items-start justify-between mb-4">
@@ -60,6 +64,9 @@ export function showCustomPersonaModal(existingName, existingPrompt, onSave) {
     const modal = document.createElement('div');
     modal.className = 'glass-card max-w-lg w-full p-6 shadow-2xl border-cyan-500/30 slide-in';
     modal.style.background = 'linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'cp-title');
 
     modal.innerHTML = `
         <div class="flex items-start justify-between mb-4">
@@ -132,6 +139,10 @@ export function showConfirmModal(title, message, onConfirm) {
     const modal = document.createElement('div');
     modal.className = 'glass-card max-w-sm w-full p-6 shadow-2xl border-orange-500/30 slide-in';
     modal.style.background = 'linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'confirm-title');
+    modal.setAttribute('aria-describedby', 'confirm-message');
 
     modal.innerHTML = `
         <div class="mb-4">
@@ -178,6 +189,10 @@ export function showInfoModal(title, message) {
     const modal = document.createElement('div');
     modal.className = 'glass-card max-w-md w-full p-6 shadow-2xl border-cyan-500/30 slide-in';
     modal.style.background = 'linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'info-title');
+    modal.setAttribute('aria-describedby', 'info-message');
 
     modal.innerHTML = `
         <div class="flex items-start justify-between mb-4">
