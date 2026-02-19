@@ -12,7 +12,6 @@
     <link rel="icon" type="image/png" href="cat-icon-1024-transparent5.png">
     
     <!-- Remote Debugger (Restored) -->
-    <script src="src/utils/logger.js?v=2.4.0"></script>
 
     <!-- Theme Bootstrapper: Applied synchronously to <html> to prevent flash -->
     <script>
@@ -99,7 +98,7 @@
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
     </style>
 </head>
-<body class="bg-void" style="background-color: #0a0a0f;">
+<body class="bg-void">
     <!-- Loading overlay: shown instantly, removed after init completes -->
     <div id="loading-overlay">
         <div>
@@ -374,7 +373,7 @@
 
     <!-- Main Module -->
     <!-- Main Module -->
-    <script type="module" src="src/main.js?v=2.4.0"></script>
+    <script type="module" src="dist/src/main.js?v=2.4.0"></script>
 
     <!-- Media Lab Modal (Static Shell) -->
     <div id="media-lab-modal" class="fixed inset-0 z-[999] items-center justify-center p-4 bg-black/60 backdrop-blur-md" title="Close Media Lab" onclick="if(event.target === this) window.gravityChat.closeMediaLab()">

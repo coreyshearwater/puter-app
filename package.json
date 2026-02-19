@@ -8,13 +8,17 @@
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "build": "tsc",
+    "dev": "tsc --watch"
   },
   "author": "Antigravity",
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.2.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "typescript": "^5.5.4",
+    "@types/node": "^22.0.0"
   },
   "dependencies": {
     "tree-kill": "^1.2.2"

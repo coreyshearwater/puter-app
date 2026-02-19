@@ -259,6 +259,7 @@ input:focus {
     color: #ff3c50;
     cursor: pointer;
     transition: all 0.2s ease;
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     z-index: 10;
     transform: translateY(50%);

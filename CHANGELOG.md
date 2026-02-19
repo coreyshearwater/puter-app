@@ -2,6 +2,32 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.6.4] - "Zero-Trust Audit" - 2026-02-19
+
+### Highlights
+
+- **TypeScript Runtime Audit**: Conducted a comprehensive 18-point behavioral audit to ensure runtime equivalence after the TS migration.
+- **Identified Regressions**:
+  - **Media Lab**: Discovered critical runtime syntax errors in HTML templates due to hardcoded TS casts in string literals (`src/components/media-lab.ts`).
+  - **Audio Flow**: Identified a "Half-Duplex" breakage where new message sends fail to interrupt active audio queues, causing overlapping playback.
+  - **Window Chrome**: Found the Electron window still using standard OS frames instead of the intended frameless draggable design.
+  - **Bootstrapper Risks**: Identified a lack of error handling in the `index.html` theme bootstrapper that could lead to crashes on corrupted `localStorage`.
+- **System Verification**:
+  - **Neural Memory**: Verified recursive indexing and exclusion logic is stable and leak-free.
+  - **Local LLM**: Confirmed successful streaming and response handling via the Python bridge.
+  - **AI Streaming**: Verified smooth typewriter effects and markdown/highlighting resilience.
+- **Compliance**: Identified that the "Executioner Sandbox" is currently non-functional due to Puter.js V2 API changes (awaiting backend executor).
+
+## [v2.6.3] - "TypeScript Awakening" - 2026-02-19
+
+### Highlights
+
+- **Full Workspace Migration**: Successfully migrated the entire `src/` directory to TypeScript.
+- **Remaining Components Migrated**: Converted `chat.js`, `input.js`, `media-lab.js`, `oracular.js`, `voice-browser.js`, and `voice-controls.js` to `.ts`.
+- **Enhanced Type Safety**: Defined comprehensive interfaces for `AppState`, `Persona`, `Session`, and `ChatMessage`, ensuring strict type checking across the codebase.
+- **Stability**: Fixed numerous potential null-pointer exceptions and implicit `any` type issues identified during the TSC build process. Verified with clean `tsc` build.
+- **Refinement**: Cleaned up `index.html` script tags and improved event handling types in `input.ts`.
+
 ## [v2.6.2] - "Polished Reliability" - 2026-02-19
 
 ### Highlights
