@@ -1,6 +1,6 @@
-import { AppState } from '../../state.js';
+import { AppState } from '../../state/state.js';
 import { speakText, stopHardwareAudio, captureAudio, stopHardwareMic } from './engine.js';
-import { setVoiceStatus, setSendButtonSpeaking, updateMicButton } from '../../ui/voice-controls.js';
+import { setVoiceStatus, setSendButtonSpeaking, updateMicButton } from '../../components/voice-controls.js';
 import { processSemanticCommand } from '../intents.js';
 
 let speechQueue = [];

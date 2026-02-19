@@ -1,8 +1,8 @@
-import { AppState } from '../state.js';
+import { AppState } from '../state/state.js';
 import { applyTheme } from '../utils/theme.js';
 import { loadFiles } from './file-manager.js';
-import { selectPersona } from '../ui/sidebar/personas.js';
-import { selectModel, renderModelList } from '../ui/sidebar/models.js';
+import { selectPersona } from '../components/sidebar/personas.js';
+import { selectModel, renderModelList } from '../components/sidebar/models.js';
 import { showToast } from '../utils/toast.js';
 
 /**

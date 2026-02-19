@@ -1,21 +1,21 @@
-import { AppState } from './state.js';
+import { AppState } from './state/state.js';
 import { loadStateFromKV, saveStateToKV } from './services/storage.js';
-import { initializeOracularControls } from './ui/oracular.js';
-import { initializePersonas, selectPersona, deletePersona, createPersona } from './ui/sidebar/personas.js';
-import { fetchModels, selectModel, renderModelList, toggleGrokMenu, refreshModels } from './ui/sidebar/models.js';
-import { renderSettings } from './ui/sidebar/settings.js';
-import { initializeSessions, createNewSession, switchSession, deleteSession, syncCurrentSession } from './ui/sidebar/sessions.js';
+import { initializeOracularControls } from './components/oracular.js';
+import { initializePersonas, selectPersona, deletePersona, createPersona } from './components/sidebar/personas.js';
+import { fetchModels, selectModel, renderModelList, toggleGrokMenu, refreshModels } from './components/sidebar/models.js';
+import { renderSettings } from './components/sidebar/settings.js';
+import { initializeSessions, createNewSession, switchSession, deleteSession, syncCurrentSession } from './components/sidebar/sessions.js';
 import { loadVoices } from './services/voice.js';
 import { loadFiles, previewFile, deleteFile, createNewFile, createNewFolder } from './services/file-manager.js';
-import { setupInputListeners, removeAttachment } from './ui/input.js';
-import { clearChat, exportChat } from './ui/chat.js';
-import { renderMediaLab, initMediaParams } from './ui/media-lab.js';
+import { setupInputListeners, removeAttachment } from './components/input.js';
+import { clearChat, exportChat } from './components/chat.js';
+import { renderMediaLab, initMediaParams } from './components/media-lab.js';
 import { indexProject, loadIndexFromKV } from './services/memory.js';
 import { applyTheme } from './utils/theme.js';
 import { executeInSandbox } from './services/sandbox.js';
 import { showToast } from './utils/toast.js';
 import { diagnosePuterModels, stopGeneration } from './services/ai.js';
-import { openVoiceBrowser } from './ui/voice-browser.js';
+import { openVoiceBrowser } from './components/voice-browser.js';
 
 // Namespace for global access (legacy support for string templates)
 window.gravityChat = Object.assign(window.gravityChat || {}, {

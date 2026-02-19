@@ -1,8 +1,8 @@
-import { AppState } from '../state.js';
+import { AppState } from '../state/state.js';
 import { showToast } from '../utils/toast.js';
 import { loadVoices as loadEngineVoices, speakText as engineSpeakText, stopHardwareAudio, captureAudio, stopHardwareMic } from './voice/engine.js';
 import { handleQueueSpeech, stopAllSpeech, transcribeAndAction, waitForAIIdle } from './voice/logic.js';
-import { setVoiceStatus, updateMicButton } from '../ui/voice-controls.js';
+import { setVoiceStatus, updateMicButton } from '../components/voice-controls.js';
 
 export function loadVoices() {
     loadEngineVoices();

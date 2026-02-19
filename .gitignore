@@ -1,5 +1,7 @@
+
 # Python venv & bytecode
 edge_tts_venv/
+local_llm_venv/
 venv/
 .venv/
 __pycache__/

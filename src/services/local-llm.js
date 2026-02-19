@@ -1,6 +1,6 @@
-import { AppState } from '../state.js';
+import { AppState } from '../state/state.js';
 import { showToast } from '../utils/toast.js';
-import { CONFIG } from '../config.js';
+import { CONFIG } from '../state/config.js';
 
 const LOCAL_LLM_URL = CONFIG.LOCAL_LLM_URL;
 

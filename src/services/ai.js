@@ -1,5 +1,5 @@
-import { AppState } from '../state.js';
-import { renderMessage, createAIMessageElement } from '../ui/chat.js';
+import { AppState } from '../state/state.js';
+import { renderMessage, createAIMessageElement } from '../components/chat.js';
 import { renderMarkdown } from '../utils/markdown.js';
 import { stopSpeech } from './voice.js';
 import { scrollToBottom } from '../utils/dom.js';
@@ -10,7 +10,7 @@ import { askGrok } from './grok-service.js';
 import { askLocalLLM } from './local-llm.js';
 import { showErrorModal, showInfoModal } from '../utils/modals.js';
 import { saveStateToKV } from './storage.js';
-import { syncCurrentSession } from '../ui/sidebar/sessions.js';
+import { syncCurrentSession } from '../components/sidebar/sessions.js';
 
 const FREE_FALLBACK_CHAIN = [
     'gpt-4o-mini',          // Direct Puter model — very reliable

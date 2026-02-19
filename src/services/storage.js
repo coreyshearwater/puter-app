@@ -1,4 +1,4 @@
-import { AppState } from '../state.js';
+import { AppState } from '../state/state.js';
 
 let saveTimeout = null;
 

@@ -97,8 +97,9 @@ function startBackend() {
     }
 
     // 2. Edge TTS Server
+    const edgeTtsScript = path.join(rootDir, 'backend', 'edge_tts_server.py');
     if (fs.existsSync(edgeTtsPython)) {
-        spawnPythonProcess(edgeTtsPython, ['edge_tts_server.py'], rootDir); // Script is in root based on start.bat check
+        spawnPythonProcess(edgeTtsPython, ['edge_tts_server.py'], path.join(rootDir, 'backend')); 
     } else {
         log('WARN: Edge TTS virtual environment not found.');
     }
@@ -106,17 +107,17 @@ function startBackend() {
     // 3. Local LLM Server (New)
 
     const localLlmPython = path.join(rootDir, 'local_llm_venv', 'Scripts', 'python.exe');
-    const localLlmScript = path.join(rootDir, 'local_llm_server.py');
+    const localLlmScript = path.join(rootDir, 'backend', 'local_llm_server.py');
     
     log(`Checking for Local LLM at: ${localLlmScript}`);
     if (fs.existsSync(localLlmScript)) {
         log('Local LLM script found.');
         if (fs.existsSync(localLlmPython)) {
             log(`Found Local LLM venv at: ${localLlmPython}`);
-            spawnPythonProcess(localLlmPython, ['local_llm_server.py'], rootDir);
+            spawnPythonProcess(localLlmPython, ['local_llm_server.py'], path.join(rootDir, 'backend'));
         } else {
             log('WARN: Local LLM venv not found. Trying system python...');
-            spawnPythonProcess('python', ['local_llm_server.py'], rootDir);
+            spawnPythonProcess('python', ['local_llm_server.py'], path.join(rootDir, 'backend'));
         }
     } else {
         log('Local LLM script NOT found.');
@@ -124,7 +125,7 @@ function startBackend() {
 
     // 4. Debug Server (runs with system python usually, or we can use one of the venvs)
     // start.bat uses 'python' from PATH for debug_server
-    spawnPythonProcess('python', ['debug_server.py'], rootDir);
+    spawnPythonProcess('python', ['debug_server.py'], path.join(rootDir, 'backend'));
 }
 
 function createWindow() {

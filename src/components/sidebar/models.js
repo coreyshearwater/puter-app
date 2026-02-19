@@ -1,4 +1,4 @@
-import { AppState } from '../../state.js';
+import { AppState } from '../../state/state.js';
 import { updateElementText } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 import { showInfoModal } from '../../utils/modals.js';

@@ -1,4 +1,4 @@
-import { AppState } from '../../state.js';
+import { AppState } from '../../state/state.js';
 import { saveStateToKV } from '../storage.js';
 
 let currentAudio = null;

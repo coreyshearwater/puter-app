@@ -77,18 +77,18 @@ def main():
         
 
         # 3. TTS
-        if os.path.exists("edge_tts_server.py"):
-            processes.append(("TTS", subprocess.Popen([get_venv_python("edge_tts_venv"), "edge_tts_server.py"], creationflags=flags)))
+        if os.path.exists(os.path.join("backend", "edge_tts_server.py")):
+            processes.append(("TTS", subprocess.Popen([get_venv_python("edge_tts_venv"), "edge_tts_server.py"], cwd="backend", creationflags=flags)))
 
         # 4. Local LLM Engine (New)
-        if os.path.exists("local_llm_server.py"):
+        if os.path.exists(os.path.join("backend", "local_llm_server.py")):
              llm_python = get_venv_python("local_llm_venv")
              print("🧠 Starting Local LLM Engine...")
-             processes.append(("Local LLM", subprocess.Popen([llm_python, "local_llm_server.py"], creationflags=flags)))
+             processes.append(("Local LLM", subprocess.Popen([llm_python, "local_llm_server.py"], cwd="backend", creationflags=flags)))
             
         # 5. Debug Server
-        if os.path.exists("debug_server.py"):
-            processes.append(("Debug", subprocess.Popen(["python", "debug_server.py"], creationflags=flags)))
+        if os.path.exists(os.path.join("backend", "debug_server.py")):
+            processes.append(("Debug", subprocess.Popen(["python", "debug_server.py"], cwd="backend", creationflags=flags)))
 
 
         print("⏳ Warning up (3s)...")
