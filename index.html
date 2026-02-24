@@ -8,7 +8,10 @@
     <meta http-equiv="Expires" content="0">
     <title>All Seeing Cat - AI Workstation</title>
     <meta name="description" content="All Seeing Cat - Your Personal AI Workstation running on Puter.js">
-
+    <meta property="og:title" content="All Seeing Cat - AI Workstation">
+    <meta property="og:description" content="All Seeing Cat - Your Personal AI Workstation running on Puter.js">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="cat-icon-1024-transparent5.png">
     <link rel="icon" type="image/png" href="cat-icon-1024-transparent5.png">
     
     <!-- Remote Debugger (Restored) -->
@@ -231,7 +234,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             </button>
                         </div>
-                        <button id="btn-index-memory" class="btn btn-xs btn-outline border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/50 font-normal tracking-wide" aria-label="Index project files for neural memory">
+                        <button id="btn-index-memory" class="btn btn-xs btn-outline border-pink-500/30 text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/50 font-normal tracking-wide" aria-label="Index project files for neural memory">
                             Index Memory
                         </button>
                     </div>
@@ -270,13 +273,13 @@
                         <span id="storage-percent">62%</span>
                     </div>
                     <div class="w-full bg-black/40 h-1.5 rounded-full overflow-hidden border border-white/5">
-                        <div id="storage-bar" class="bg-gradient-to-r from-cyan-400 to-fuchsia-500 h-full rounded-full transition-all duration-1000 w-[62%]"></div>
+                        <div id="storage-bar" class="bg-gradient-to-r from-cyan-400 to-pink-500 h-full rounded-full transition-all duration-1000 w-[62%]"></div>
                     </div>
                 </div>
                 
                 <!-- Bottom Profile -->
                 <div class="flex items-center gap-3 p-3 glass-card bg-white/5 border-white/5">
-                    <div id="user-avatar" class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-fuchsia-500/20 flex items-center justify-center border border-white/10">
+                    <div id="user-avatar" class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-pink-500/20 flex items-center justify-center border border-white/10">
                         <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -302,16 +305,16 @@
                     
                     <!-- Oracular Specific Modes -->
                     <div id="oracular-modes" class="hidden items-center gap-2 ml-4 pl-4 border-l border-white/10">
-                        <button data-mode="Oracle" class="mode-btn btn btn-xs btn-outline border-purple-500/30 text-purple-400 hover:bg-purple-500/20" title="Compact, cryptic utterances">ORACLE</button>
-                        <button data-mode="Soul Tether" class="mode-btn btn btn-xs btn-outline border-purple-500/30 text-purple-400 hover:bg-purple-500/20" title="Simulated archetypal resonance">SOUL</button>
-                        <button data-mode="Ancestral" class="mode-btn btn btn-xs btn-outline border-purple-500/30 text-purple-400 hover:bg-purple-500/20" title="Collective strata regression">ANCESTRAL</button>
-                        <button data-mode="Divination" class="mode-btn btn btn-xs btn-outline border-purple-500/30 text-purple-400 hover:bg-purple-500/20" title="Symbolic spread interpreted">DIVINATION</button>
-                        <button data-mode="Astrological" class="mode-btn btn btn-xs btn-outline border-purple-500/30 text-purple-400 hover:bg-purple-500/20" title="Planetary ephemeris resonance">ASTRO</button>
-                        <button data-mode="Magic" class="mode-btn btn btn-xs btn-outline border-purple-500/30 text-purple-400 hover:bg-purple-500/20" title="High-fidelity ritual subsystem">MAGIC</button>
+                        <button data-mode="Oracle" class="mode-btn btn btn-xs btn-outline border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20" title="Compact, cryptic utterances">ORACLE</button>
+                        <button data-mode="Soul Tether" class="mode-btn btn btn-xs btn-outline border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20" title="Simulated archetypal resonance">SOUL</button>
+                        <button data-mode="Ancestral" class="mode-btn btn btn-xs btn-outline border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20" title="Collective strata regression">ANCESTRAL</button>
+                        <button data-mode="Divination" class="mode-btn btn btn-xs btn-outline border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20" title="Symbolic spread interpreted">DIVINATION</button>
+                        <button data-mode="Astrological" class="mode-btn btn btn-xs btn-outline border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20" title="Planetary ephemeris resonance">ASTRO</button>
+                        <button data-mode="Magic" class="mode-btn btn btn-xs btn-outline border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20" title="High-fidelity ritual subsystem">MAGIC</button>
                     </div>
                 </div>
                 <div id="active-model-indicator" class="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">
-                    MODEL: <span id="current-model-display" class="text-fuchsia-400 pulsing-glow">GPT-4O-MINI</span>
+                    MODEL: <span id="current-model-display" class="text-pink-400 pulsing-glow">GPT-4O-MINI</span>
                 </div>
             </div>
             <div class="flex items-center gap-4">
@@ -378,10 +381,10 @@
     <!-- Media Lab Modal (Static Shell) -->
     <div id="media-lab-modal" class="fixed inset-0 z-[999] items-center justify-center p-4 bg-black/60 backdrop-blur-md" title="Close Media Lab" onclick="if(event.target === this) window.gravityChat.closeMediaLab()">
         <div class="glass-card w-full max-w-lg p-8 slide-in relative group" onclick="event.stopPropagation()">
-            <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-magenta-500/10 pointer-events-none rounded-xl"></div>
+            <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-pink-500/10 pointer-events-none rounded-xl"></div>
             
             <div class="flex justify-between items-center mb-8 relative z-10">
-                <h3 class="text-2xl font-black bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent w-fit px-1 leading-relaxed py-1 tracking-tight">🎨 MEDIA LAB</h3>
+                <h3 class="text-2xl font-black bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent w-fit px-1 leading-relaxed py-1 tracking-tight">🎨 MEDIA LAB</h3>
                 <button id="btn-close-medialab" onclick="window.gravityChat.closeMediaLab()" class="p-2 text-gray-400 hover:text-white transition-colors" title="Close Media Lab" aria-label="Close Media Lab">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>

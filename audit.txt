@@ -1,0 +1,32 @@
+
+[UX AUDIT] 40 files checked
+--------------------------------------------------
+[!] ISSUES (21):
+  - [Color] index.html: PURPLE DETECTED ('purple'). Banned by Maestro rules. Use Teal/Cyan/Emerald instead.
+  - [Cognitive Load] directoryscan.html: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Cognitive Load] filescan.html: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Cognitive Load] modulescan.html: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Color] nocxstyle.css: PURPLE DETECTED ('purple'). Banned by Maestro rules. Use Teal/Cyan/Emerald instead.
+  - [Hick's Law] index.html: 19 nav items (Max 7)
+  - [Color] index.html: PURPLE DETECTED ('purple'). Banned by Maestro rules. Use Teal/Cyan/Emerald instead.
+  - [Animation] index.html: Scroll handler animating layout properties. Use transform/opacity for 60fps.
+  - [Motion] index.html: Scroll-driven animation without throttling. Add requestAnimationFrame for 60fps.
+  - [Typography] index-BSjZa4pk.css: 4 font families detected. Limit to 2-3 for cohesion.
+[*] WARNINGS (329):
+  - [Fitts' Law] index.html: Small targets (< 44px)
+  - [Serial Position] index.html: Last nav item may not be important. Place key actions at start/end.
+  - [Reflective] index.html: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.
+  - [Cognitive Load] index.html: High visual noise detected. Many colors and borders increase cognitive load.
+  - [Typography] index.html: No line length constraint (45-75ch). Use max-w-prose or max-w-[65ch].
+  - [Typography] index.html: Fixed font sizes without clamp(). Consider fluid typography: clamp(MIN, PREFERRED, MAX)
+  - [Typography] index.html: Skipped heading level (h1 -> h3). Maintain sequential hierarchy.
+  - [Performance] index.html: Animating expensive properties (left, margin, width, height, top, bottom). Use transform/opacity where possible.
+  - [Accessibility] index.html: Animations found without prefers-reduced-motion check
+  - [Von Restorff] audit_backend_report.html: No primary CTA
+  - [Serial Position] audit_backend_report.html: Last nav item may not be important. Place key actions at start/end.
+  - [Reflective] audit_backend_report.html: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.
+  - [Typography] audit_backend_report.html: No line length constraint (45-75ch). Use max-w-prose or max-w-[65ch].
+  - [Typography] audit_backend_report.html: Heading has line-height 1.6 (>1.3). Headings should be tighter (1.1-1.3).
+  - [Typography] audit_backend_report.html: Heading has line-height 2 (>1.3). Headings should be tighter (1.1-1.3).
+[+] PASSED CHECKS: 26
+STATUS: FAIL

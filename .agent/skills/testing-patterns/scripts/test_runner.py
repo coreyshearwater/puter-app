@@ -45,7 +45,9 @@ def detect_test_framework(project_path: Path) -> dict:
             # Check for test script
             if "test" in scripts:
                 result["framework"] = "npm test"
-                result["cmd"] = ["npm", "test"]
+                import os
+                npm_cmd = "npm.cmd" if os.name == "nt" else "npm"
+                result["cmd"] = [npm_cmd, "test"]
                 
                 # Try to detect specific framework for coverage
                 if "vitest" in deps:
