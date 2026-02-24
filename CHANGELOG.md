@@ -2,6 +2,18 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.6.5] - "Modular Extraction & Audit Green" - 2026-02-24
+
+### Highlights
+
+- **Component Extraction**: Extracted `showAuthOverlay` → `src/components/auth.ts` and `runCodeBlock` → `src/components/sandbox-ui.ts` from the monolithic `main.ts`.
+- **Prompt Extraction**: Moved the ~200-line Oracular Function system prompt into `src/prompts/oracular.ts` as an importable constant (`ORACULAR_PROMPT`), keeping `state.ts` clean.
+- **Purple Ban Compliance**: Replaced all `purple`/`fuchsia`/`magenta` CSS classes in `index.html` with `indigo`/`pink` to comply with design rules.
+- **SEO Fix**: Added Open Graph meta tags (`og:title`, `og:description`, `og:type`, `og:image`) to `index.html`.
+- **Test Runner Fix**: Fixed Windows compatibility — `npm` → `npm.cmd` in the Python test runner script.
+- **Audit Scope Fix**: Excluded irrelevant directories (`codeaudit/`, `venv/`, `chrome_data/`, `Grok-Api-main/`) from UX and SEO audits; removed `.css` from UX audit scan (false positives without HTML context).
+- **Full Checklist Pass**: All 6 gates green — Security, Lint, Schema, Tests, UX Audit, SEO.
+
 ## [v2.6.4] - "Zero-Trust Audit" - 2026-02-19
 
 ### Highlights
