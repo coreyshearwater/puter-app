@@ -41,12 +41,8 @@ export const AppState: IAppState = {
     currentModel: 'z-ai/glm-4.5-air:free',
     isStreaming: false,
     premiumEnabled: false,
-    theme: (function(): string {
-        try {
-            const s = JSON.parse(localStorage.getItem('gravitychat_settings') || '{}');
-            return s.theme || 'void';
-        } catch (e) { return 'void'; }
-    })(),
+    theme: 'void',
+
     allModels: [],
     freeModels: [],
     
@@ -96,3 +92,20 @@ export const AppState: IAppState = {
     _streamStartedAt: 0,
     _abortStream: false,
 };
+
+/**
+ * Heuristic initialization: Load critical UI state (like theme) 
+ * from localStorage BEFORE main hydration. This ensures consistency 
+ * with the theme bootstrapper in index.html.
+ */
+export function initializeState() {
+    try {
+        const settingsData = localStorage.getItem('gravitychat_settings');
+        if (settingsData) {
+            const settings = JSON.parse(settingsData);
+            if (settings.theme) AppState.theme = settings.theme;
+        }
+    } catch (e) {
+        // Silently fail if localStorage is blocked
+    }
+}

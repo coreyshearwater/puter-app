@@ -11,6 +11,7 @@ interface SpeechItem {
 
 let speechQueue: SpeechItem[] = [];
 let activeSpeakingBubble: HTMLElement | null = null;
+let isQueueProcessing = false;
 
 declare const puter: any;
 
@@ -26,25 +27,31 @@ export async function waitForAIIdle(timeout: number = 5000): Promise<boolean> {
 
 export async function handleQueueSpeech(text: string, bubble: HTMLElement | null, startRecording: () => void) {
     if (!text || !text.trim()) return;
-    if (speechQueue.length === 0) {
+    
+    speechQueue.push({ text, bubble });
+    
+    if (speechQueue.length === 1 && !AppState.isSpeakingAudio) {
         activeSpeakingBubble = bubble;
         setSendButtonSpeaking(true);
     }
-    speechQueue.push({ text, bubble });
-    if (!AppState.isSpeakingAudio) processSpeechQueue(startRecording);
+    
+    if (!isQueueProcessing) {
+        isQueueProcessing = true;
+        processSpeechQueue(startRecording);
+    }
 }
 
 async function processSpeechQueue(startRecording: () => void) {
     if (speechQueue.length === 0) {
         AppState.isSpeakingAudio = false;
+        isQueueProcessing = false;
         if (activeSpeakingBubble) {
-            const btn = activeSpeakingBubble.querySelector('.stop-gen-btn');
-            if (btn) btn.remove();
+            activeSpeakingBubble.querySelectorAll('.stop-gen-btn').forEach((b: Element) => b.remove());
         }
         activeSpeakingBubble = null;
         setSendButtonSpeaking(false);
         if (AppState.isVoiceSession && !AppState.isRecording && !AppState.voiceSuspended) {
-            setTimeout(() => startRecording(), 500);
+            setTimeout(() => startRecording(), 400); // Slightly faster resume
         }
         return;
     }
@@ -54,7 +61,7 @@ async function processSpeechQueue(startRecording: () => void) {
             stopHardwareMic();
             AppState.isRecording = false;
             updateMicButton(false);
-            await new Promise(r => setTimeout(r, 150));
+            await new Promise(r => setTimeout(r, 100));
         }
     }
     
@@ -63,19 +70,21 @@ async function processSpeechQueue(startRecording: () => void) {
     if (!item) return;
     const { text, bubble } = item;
     
+    // UI: Add stop button if missing
     if (bubble && !bubble.querySelector('.stop-gen-btn')) {
         const btn = document.createElement('button');
         btn.className = 'stop-gen-btn';
-        btn.title = 'Stop voice playback';
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            stopAllSpeech();
-        };
+        btn.onclick = (e) => { e.stopPropagation(); stopAllSpeech(); };
         btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
         bubble.appendChild(btn);
     }
     
+    // Concurrent processing: We wait for the current speak to finish, 
+    // but the engine itself could be optimized for pre-loading if we had a split API.
+    // For now, simple sequential with reduced overhead.
     await speakText(text); 
+    
+    // Tail call for next item
     processSpeechQueue(startRecording);
 }
 

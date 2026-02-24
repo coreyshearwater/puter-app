@@ -55,10 +55,17 @@ export async function listLocalModels(): Promise<any[]> {
     }
 }
 
+import { MemoryCache } from '../utils/performance.js';
+
+const searchCache = new MemoryCache<any[]>(600000); // 10 minutes cache
+
 /**
- * Search Hugging Face (proxied via backend)
+ * Search HuggingFace models for GGUF files
  */
 export async function searchHF(query: string): Promise<any[]> {
+    const cached = searchCache.get(query);
+    if (cached) return cached;
+
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
@@ -70,7 +77,9 @@ export async function searchHF(query: string): Promise<any[]> {
 
         if (response.ok) {
             const data = await response.json();
-            return data.data || [];
+            const results = data.data || [];
+            searchCache.set(query, results);
+            return results;
         }
         throw new Error('Backend unavailable');
     } catch (err) {
@@ -81,12 +90,14 @@ export async function searchHF(query: string): Promise<any[]> {
             if (!hfResponse.ok) throw new Error('HF API Error');
             
             const models = await hfResponse.json();
-            return models.map((m: any) => ({
+            const results = models.map((m: any) => ({
                 id: m.modelId,
                 downloads: m.downloads,
                 likes: m.likes,
                 tags: m.tags
             }));
+            searchCache.set(query, results);
+            return results;
         } catch (hfErr) {
             Logger.error('LocalLLM', 'Direct HF search failed:', hfErr);
             showToast('Could not search HuggingFace (Offline?)', 'error');

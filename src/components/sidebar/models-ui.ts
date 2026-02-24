@@ -1,60 +1,48 @@
 
 export const ModelsUI = {
     renderLocalModelManager(online: boolean, loadedModel: string | null, localModels: any[], activeTab: string) {
-        const profile = { vram: 4 }; // Default for now, could be passed in
+        const profile = { vram: 4 };
 
-        // Header: Status & VRAM
-        let html = `
+        return `
             <div class="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <!-- Hardware Stats -->
                 ${this.renderHardwareStats(online, loadedModel, profile)}
-                
-                <!-- Connection Error -->
                 ${!online ? this.renderOfflineMessage() : ''}
-
-                <!-- Loaded Model Card -->
                 ${loadedModel ? this.renderLoadedModelCard(loadedModel) : ''}
-
-                <!-- Tabs -->
                 ${this.renderTabs(activeTab)}
-                
-                <!-- Tab Content -->
                 <div id="local-tab-content">
                     ${this.renderTabContent(activeTab, localModels, loadedModel)}
                 </div>
             </div>
         `;
-        return html;
     },
 
     renderHardwareStats(online: boolean, loadedModel: string | null, profile: any) {
+        const usagePercent = loadedModel ? 70 : 5;
+        const usageText = loadedModel ? 'LOADED (~3.2GB)' : '0GB';
+        
         return `
             <div class="glass-card p-3 bg-black/40 border-white/5 relative overflow-hidden group">
                 <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
-                         <div id="local-status-dot" class="w-2 h-2 rounded-full ${online ? 'bg-emerald-400 shadow-[0_0_10px_#34d399] ring-2 ring-emerald-500/20' : 'bg-red-500'} animate-pulse"></div>
+                         <div class="w-2 h-2 rounded-full ${online ? 'bg-emerald-400 shadow-[0_0_10px_#34d399] ring-2 ring-emerald-500/20' : 'bg-red-500'} animate-pulse"></div>
                          <span class="text-[10px] font-bold tracking-widest text-emerald-400 uppercase">
                             ${online ? 'ENGINE ACTIVE' : 'ENGINE OFFLINE'}
                          </span>
                     </div>
                     <span class="text-[9px] font-mono text-gray-500">VRAM: ${profile.vram}GB</span>
                 </div>
-
-                <!-- VRAM Visual -->
                 <div class="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden flex">
-                    <div class="h-full bg-emerald-500" style="width: ${loadedModel ? '70%' : '5%'}; transition: width 0.5s ease;"></div>
+                    <div class="h-full bg-emerald-500 transition-all duration-500" style="width: ${usagePercent}%"></div>
                 </div>
                 <div class="flex justify-between mt-1 text-[8px] text-gray-500 font-mono">
                     <span>IDLE</span>
-                    <span>${loadedModel ? 'LOADED (~3.2GB)' : '0GB'}</span>
+                    <span>${usageText}</span>
                     <span>MAX</span>
                 </div>
-                
                 ${!online ? `
                 <div class="mt-2 text-center">
-                    <button onclick="window.gravityChat.retryConnection()" class="btn btn-xs btn-error btn-outline border-red-500/50 text-red-400 hover:bg-red-500/10">
+                    <button onclick="window.gravityChat.retryConnection()" class="btn btn-xs btn-error btn-outline border-red-500/50 text-red-400">
                         Retry Connection
                     </button>
                 </div>` : ''}
@@ -87,9 +75,10 @@ export const ModelsUI = {
     },
 
     renderTabs(activeTab: string) {
+        const isFiles = !activeTab || activeTab === 'files';
         return `
             <div class="flex gap-1 border-b border-white/10 pb-1">
-                <button onclick="window.gravityChat.setLocalTab('files')" class="flex-1 text-[10px] font-bold py-1 hover:text-cyan-400 transition ${(!activeTab || activeTab === 'files') ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'}">MY MODELS</button>
+                <button onclick="window.gravityChat.setLocalTab('files')" class="flex-1 text-[10px] font-bold py-1 hover:text-cyan-400 transition ${isFiles ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500'}">MY MODELS</button>
                 <button onclick="window.gravityChat.setLocalTab('search')" 
                     onmouseenter="window.gravityChat.showHFTooltip(event)"
                     onmouseleave="window.gravityChat.hideModelTooltip()"
@@ -101,11 +90,9 @@ export const ModelsUI = {
     },
 
     renderTabContent(activeTab: string, localModels: any[], loadedModel: string | null) {
-        if (!activeTab || activeTab === 'files') {
-            return this.renderFileList(localModels, loadedModel);
-        } else {
-            return this.renderSearchUI();
-        }
+        return (!activeTab || activeTab === 'files') 
+            ? this.renderFileList(localModels, loadedModel) 
+            : this.renderSearchUI();
     },
 
     renderFileList(localModels: any[], loadedModel: string | null) {
@@ -119,30 +106,23 @@ export const ModelsUI = {
             `;
         }
 
-        let html = '';
-        
-        // Recommendation
         const recommended = localModels.find(m => m.id.includes('Phi-3') || m.id.includes('Qwen') || m.meta?.size_mb < 3500);
-        if (recommended && !loadedModel) {
-             html += `
-                <div class="p-2 bg-gradient-to-r from-cyan-500/10 to-transparent border-l-2 border-cyan-500 mb-2">
-                    <div class="text-[9px] text-cyan-300 font-bold mb-1">✨ RECOMMENDED FOR YOUR GPU</div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs text-gray-300 truncate">${recommended.id}</span>
-                        <button onclick="window.gravityChat.loadLocalModel('${recommended.id}')" class="text-[10px] text-cyan-400 hover:text-cyan-300 underline">LOAD</button>
-                    </div>
+        const recHtml = (recommended && !loadedModel) ? `
+            <div class="p-2 bg-gradient-to-r from-cyan-500/10 to-transparent border-l-2 border-cyan-500 mb-2">
+                <div class="text-[9px] text-cyan-300 font-bold mb-1">✨ RECOMMENDED FOR YOUR GPU</div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-300 truncate">${recommended.id}</span>
+                    <button onclick="window.gravityChat.loadLocalModel('${recommended.id}')" class="text-[10px] text-cyan-400 hover:text-cyan-300 underline">LOAD</button>
                 </div>
-             `;
-        }
+            </div>
+        ` : '';
 
-        // List
-        html += `<div class="space-y-1.5 mt-2 custom-scrollbar overflow-y-auto max-h-[300px]">`;
-        for (const m of localModels) {
+        const listHtml = localModels.map(m => {
             const isActive = m.id === loadedModel;
             const sizeGB = (m.meta.size_mb / 1024).toFixed(1);
             const sizeColor = parseFloat(sizeGB) > 5 ? 'text-red-400' : parseFloat(sizeGB) > 3.5 ? 'text-amber-400' : 'text-emerald-400';
 
-            html += `
+            return `
                 <div class="group relative glass-card p-2 flex items-center justify-between hover:bg-white/5 transition border-white/5 hover:border-white/10 ${isActive ? 'ring-1 ring-emerald-500/50 bg-emerald-500/5' : ''}">
                     <div class="min-w-0 flex-1 pr-2">
                         <div class="text-[11px] font-semibold text-gray-200 truncate" title="${m.id}">${m.id}</div> 
@@ -151,23 +131,18 @@ export const ModelsUI = {
                             <span class="text-[8px] text-gray-600 uppercase tracking-wider">Q4_K_M</span>
                         </div>
                     </div>
-                    
                     <div class="flex items-center gap-1">
                         ${isActive ? 
                             `<span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">ACTIVE</span>` :
                             `<button onclick="window.gravityChat.loadLocalModel('${m.id}')" class="btn btn-xs btn-ghost text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">LOAD</button>`
                         }
-                        <button onclick="window.gravityChat.confirmDeleteModel('${m.id}')" 
-                            class="w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-500/20 text-gray-600 hover:text-red-400 transition ml-1"
-                            title="Delete File">
-                            ×
-                        </button>
+                        <button onclick="window.gravityChat.confirmDeleteModel('${m.id}')" class="w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-500/20 text-gray-600 hover:text-red-400 transition ml-1">×</button>
                     </div>
                 </div>
             `;
-        }
-        html += `</div>`;
-        return html;
+        }).join('');
+
+        return `${recHtml}<div class="space-y-1.5 mt-2 custom-scrollbar overflow-y-auto max-h-[300px]">${listHtml}</div>`;
     },
 
     renderSearchUI(lastQuery = '') {
@@ -179,8 +154,6 @@ export const ModelsUI = {
                            placeholder="Search HuggingFace..." onkeydown="if(event.key === 'Enter') window.gravityChat.performHFSearch()">
                     <button onclick="window.gravityChat.performHFSearch()" class="btn btn-xs btn-square btn-ghost border border-white/10">🔍</button>
                 </div>
-                
-                <!-- Filters -->
                 <div class="flex gap-2 px-1">
                     <select id="hf-filter-quant" onchange="window.gravityChat.performHFSearch()" class="bg-black/20 text-[10px] text-gray-400 border border-white/5 rounded px-1 py-0.5 outline-none hover:border-white/20">
                         <option value="all">Any Quant</option>
@@ -188,7 +161,6 @@ export const ModelsUI = {
                         <option value="q5_k_m">Q5_K_M</option>
                         <option value="q8_0">Q8_0 (High Quality)</option>
                     </select>
-                    
                     <select id="hf-filter-size" onchange="window.gravityChat.performHFSearch()" class="bg-black/20 text-[10px] text-gray-400 border border-white/5 rounded px-1 py-0.5 outline-none hover:border-white/20">
                         <option value="all">Any Size</option>
                         <option value="small">&lt; 4GB</option>
@@ -196,25 +168,17 @@ export const ModelsUI = {
                         <option value="large">&gt; 8GB</option>
                     </select>
                 </div>
-                
                 <div id="hf-results" class="space-y-1.5 overflow-y-auto max-h-[300px] min-h-[100px] relative">
-                    <div class="text-center pt-8 text-gray-600 text-[10px] animate-pulse">
-                         Use search to find free GGUF models...
-                    </div>
+                    <div class="text-center pt-8 text-gray-600 text-[10px] animate-pulse">Use search to find free GGUF models...</div>
                 </div>
             </div>`;
     },
 
     renderHFResults(results: any[]) {
-        if (!results || results.length === 0) {
-            return `<div class="text-xs text-gray-500 text-center py-4">No results found.</div>`;
-        }
-        
-        return results.map(m => {
-            return `
+        if (!results || results.length === 0) return `<div class="text-xs text-gray-500 text-center py-4">No results found.</div>`;
+        return results.map(m => `
             <div class="glass-card p-2 flex items-center justify-between hover:bg-white/5 border-white/5 group relative"
-                 onmouseenter="window.gravityChat.showModelTooltip(event, '${m.id}')"
-                 onmouseleave="window.gravityChat.hideModelTooltip()">
+                 onmouseenter="window.gravityChat.showModelTooltip(event, '${m.id}')" onmouseleave="window.gravityChat.hideModelTooltip()">
                  <div class="min-w-0 flex-1 pr-2">
                      <div class="text-[10px] font-bold text-gray-200 truncate">${m.id}</div>
                      <div class="text-[8px] text-gray-500 flex gap-2">
@@ -224,11 +188,9 @@ export const ModelsUI = {
                      </div>
                  </div>
                  <button onclick="window.gravityChat.downloadModel('${m.id}', '${m.id.split('/').pop()}.gguf')" 
-                    class="btn btn-xs btn-outline border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/10 z-10 relative">
-                    GET
-                 </button>
+                    class="btn btn-xs btn-outline border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/10 z-10 relative">GET</button>
             </div>
-        `}).join('');
+        `).join('');
     },
 
     formatNumber(num: number | null | undefined) {
@@ -241,8 +203,7 @@ export const ModelsUI = {
     },
 
     renderCloudModelItem(model: any) {
-        // Helper to get quality (duplicated logic, ideally shared)
-        const getQuality = (id: string) => {
+        const getTier = (id: string) => {
             if(id.includes('gpt-4') || id.includes('claude-3-5') || id.includes('deepseek-r1')) return 'S';
             if(id.includes('llama-3.1-70b') || id.includes('qwen-2.5')) return 'A';
             if(id.includes('7b') || id.includes('mini')) return 'B';
@@ -250,15 +211,13 @@ export const ModelsUI = {
         };
 
         const isFree = model.id.endsWith(':free') || (model.cost?.input === 0);
-        
-        const tier = getQuality(model.id);
-        const colors: Record<string, string> = { 
+        const tier = getTier(model.id);
+        const tierColors: Record<string, string> = { 
             S: 'text-emerald-400 bg-emerald-500/15', 
             A: 'text-cyan-400 bg-cyan-500/15', 
             B: 'text-amber-400 bg-amber-500/15', 
             C: 'text-gray-400 bg-gray-500/15' 
         };
-        const tierColor = colors[tier] || colors.C;
 
         return `
             <div class="model-item glass-card p-2 cursor-pointer hover:bg-opacity-20 transition" 
@@ -271,7 +230,7 @@ export const ModelsUI = {
                         <div class="text-[9px] text-gray-500 font-mono truncate opacity-70">${model.id}</div>
                     </div>
                     <div class="flex items-center gap-1 flex-shrink-0">
-                        <span class="text-[8px] px-1 rounded font-bold ${tierColor}" title="Quality tier">${tier}</span>
+                        <span class="text-[8px] px-1 rounded font-bold ${tierColors[tier] || tierColors.C}">${tier}</span>
                         <span class="text-[8px] px-1 rounded ${isFree ? 'bg-cyan-500/20 text-cyan-400' : 'bg-orange-500/20 text-orange-400'}">${isFree ? 'FREE' : 'PAID'}</span>
                     </div>
                 </div>

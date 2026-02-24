@@ -5,10 +5,23 @@ export interface Persona {
     systemPrompt: string;
 }
 
+export interface PuterModel {
+    id: string;
+    name?: string;
+    description?: string;
+    provider?: string;
+    cost?: {
+        input: number;
+        output: number;
+        unit?: string;
+    };
+    category?: string;
+}
+
 export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
     content: string;
-    attachments?: any[];
+    attachments?: AttachedFile[];
     hidden?: boolean;
 }
 
@@ -19,6 +32,34 @@ export interface Session {
     timestamp: number;
 }
 
+export interface AttachedFile {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+    file: File;
+    content: string | null;
+}
+
+export interface ProjectFile {
+    name: string;
+    path: string;
+    size: number;
+}
+
+export interface ProjectMap {
+    indexedAt: string;
+    root: string;
+    files: ProjectFile[];
+}
+
+export interface HFSearchResult {
+    id: string;
+    downloads: number;
+    likes: number;
+    tags: string[];
+}
+
 export interface AppState {
     messages: ChatMessage[];
     sessions: Session[];
@@ -27,8 +68,8 @@ export interface AppState {
     isStreaming: boolean;
     premiumEnabled: boolean;
     theme: string;
-    allModels: any[];
-    freeModels: any[];
+    allModels: PuterModel[];
+    freeModels: PuterModel[];
     autoSpeak: boolean;
     selectedVoice: string;
     isRecording: boolean;
@@ -36,23 +77,23 @@ export interface AppState {
     wasSpeakingBeforeModal: boolean;
     isVoiceSession: boolean;
     voiceSuspended: boolean;
-    mediaRecorder: any | null;
-    audioChunks: any[];
+    mediaRecorder: MediaRecorder | null;
+    audioChunks: Blob[];
     temperature: number;
     maxTokens: number;
     personas: Persona[];
     activePersona: Persona | null;
     oracularModes: Record<string, boolean>;
     currentPath: string;
-    files: any[];
-    attachedFiles: any[];
+    files: any[]; // Opaque Puter SDK file objects
+    attachedFiles: AttachedFile[];
     grokProxy: any;
     grokApiUrl: string;
     grokConversationData: any;
     grokCookies: { sso: string; 'sso-rw': string };
     grokMenuExpanded: boolean;
     allowEmojis: boolean;
-    projectIndex: any;
+    projectIndex: ProjectMap | null;
     isProcessingIntent: boolean;
     useLocalModel: boolean;
     localServerOnline: boolean;
@@ -62,11 +103,11 @@ export interface AppState {
         style: string;
         negativePrompt: string;
     };
-    audioStream?: any;
+    audioStream?: MediaStream | null;
     localTab?: string;
     hfSearchQuery?: string;
     hfSearchFilters?: { quant: string; size: string };
-    hfSearchResults?: any[];
+    hfSearchResults?: HFSearchResult[];
     _streamStartedAt?: number;
     _abortStream?: boolean;
 }

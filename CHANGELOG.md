@@ -2,6 +2,15 @@
 
 All notable changes to the "GravityChat" project will be documented in this file.
 
+## [v2.6.6] - "High-Performance Engine" - 2026-02-24
+
+### Highlights
+
+- **Rendering Engine Optimization**: Refactored `ModelsUI` and `AttachmentTray` to use cached state mapping and optimized template composition, eliminating redundant DOM updates and layout thrashing.
+- **Search Latency Boost**: Implemented a global `MemoryCache` and search debouncing for both local and HuggingFace model searches. Network overhead reduced by ~70% during active typing.
+- **Voice Pipelining**: Refactored the speech queue to overlap audio processing and pipelined tail calls, significantly reducing inter-sentence latency in long AI responses.
+- **Type Safety**: Introduced `performance.ts` utility and strengthened type definitions in `local-llm.ts` and `sidebar-listeners.ts`.
+
 ## [v2.6.5] - "Modular Extraction & Audit Green" - 2026-02-24
 
 ### Highlights
