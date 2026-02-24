@@ -10,6 +10,7 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "build": "tsc",
+    "test": "tsc --noEmit",
     "dev": "tsc --watch"
   },
   "author": "Antigravity",

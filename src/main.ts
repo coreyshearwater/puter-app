@@ -18,6 +18,8 @@ import { showToast } from './utils/toast.js';
 import { diagnosePuterModels, stopGeneration } from './services/ai.js';
 import { openVoiceBrowser } from './components/voice-browser.js';
 import { Logger } from './utils/logger.js';
+import { runCodeBlock } from './components/sandbox-ui.js';
+import { showAuthOverlay } from './components/auth.js';
 
 // Cast AppState to strictly typed interface for internal usage
 const AppState: AppState = AppStateImpl as unknown as AppState;
@@ -52,62 +54,7 @@ window.gravityChat = Object.assign(window.gravityChat || {}, {
         syncCurrentSession(); // Update session state
     },
     exportChat,
-    runCodeBlock: async (btn: HTMLButtonElement, lang: string) => {
-        const pre = btn.closest('pre');
-        if (!pre) return;
-        const codeElement = pre.querySelector('code');
-        if (!codeElement) return;
-        const code = codeElement.innerText;
-        
-        btn.disabled = true;
-        btn.innerText = '⌛...';
-        
-        const result = await executeInSandbox(code, lang);
-        
-        btn.disabled = false;
-        btn.innerText = '▶ RUN';
-        
-        if (result) {
-            // Remove existing result if any
-            const existing = pre.nextElementSibling;
-            if (existing && existing.classList.contains('sandbox-output')) {
-                existing.remove();
-            }
-            
-            const outputDiv = document.createElement('div');
-            outputDiv.className = 'sandbox-output glass-card p-3 mt-2 text-xs font-mono slide-in';
-            outputDiv.style.borderLeft = result.exitCode === 0 ? '4px solid var(--neon-green)' : '4px solid var(--neon-orange)';
-            
-            const contentDiv = document.createElement('div');
-            if (result.stdout) {
-                const out = document.createElement('div');
-                out.className = 'text-gray-300';
-                out.innerText = result.stdout;
-                contentDiv.appendChild(out);
-            }
-            if (result.stderr) {
-                const err = document.createElement('div');
-                err.className = 'text-red-400 mt-1';
-                err.innerText = result.stderr;
-                contentDiv.appendChild(err);
-            }
-            if (!result.stdout && !result.stderr) {
-                const empty = document.createElement('div');
-                empty.className = 'text-gray-500 italic';
-                empty.innerText = `Program exited with code ${result.exitCode} (no output)`;
-                contentDiv.appendChild(empty);
-            }
-            
-            outputDiv.innerHTML = `
-                <div class="flex justify-between mb-1">
-                    <span class="text-[8px] uppercase tracking-widest text-gray-500">Output (${lang})</span>
-                    <button class="text-gray-500 hover:text-white" onclick="this.closest('.sandbox-output').remove()">×</button>
-                </div>
-            `;
-            outputDiv.appendChild(contentDiv);
-            pre.after(outputDiv);
-        }
-    },
+    runCodeBlock,
     setPremium: (enabled: boolean) => {
         AppState.premiumEnabled = enabled;
         renderModelList();
@@ -158,46 +105,6 @@ async function init() {
     } catch (e) { 
         Logger.warn('Main', 'Puter Auth failed', e);
         showToast('Auth error. Check console.', 'error');
-    }
-}
-
-function showAuthOverlay() {
-    // Create overlay if it doesn't exist
-    let overlay = document.getElementById('auth-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'auth-overlay';
-        overlay.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-[#0a0a0f] text-white p-6';
-        overlay.innerHTML = `
-            <div class="glass-card max-w-md w-full p-8 text-center space-y-6 slide-in border-cyan-500/30">
-                <div class="space-y-2">
-                    <h1 class="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent">All Seeing Cat</h1>
-                    <p class="text-gray-400">Authentication Required</p>
-                </div>
-                <div class="p-4 bg-cyan-500/5 rounded-lg border border-cyan-500/10 text-sm text-gray-300">
-                    All Seeing Cat uses Puter.js for secure storage and AI access. Sign in to continue your session.
-                </div>
-                <button id="btn-auth-signin" class="btn btn-neon w-full h-14 text-lg">Sign In with Puter</button>
-                <p class="text-[10px] text-gray-500 italic">Popups must be allowed for the sign-in window to appear.</p>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-    }
-
-    const btnAuth = document.getElementById('btn-auth-signin');
-    if (btnAuth) {
-        btnAuth.onclick = async () => {
-            try {
-                showToast('Opening Puter Sign-In...', 'info');
-                await window.puter.auth.signIn();
-                // If we reach here, user might have signed in (though signIn() sometimes returns before actual completion)
-                // Let's just refresh the page to be safe and clean
-                window.location.reload();
-            } catch (error) {
-                Logger.error('Main', 'SignIn failed:', error);
-                showToast('SignIn failed. Try again.', 'error');
-            }
-        };
     }
 }
 
