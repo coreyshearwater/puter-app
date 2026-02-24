@@ -125,7 +125,7 @@ function startBackend() {
 
     // 4. Debug Server (runs with system python usually, or we can use one of the venvs)
     // start.bat uses 'python' from PATH for debug_server
-    spawnPythonProcess('python', ['debug_server.py'], path.join(rootDir, 'backend'));
+    spawnPythonProcess('python', [path.join('backend', 'debug_server.py')], rootDir);
 }
 
 function createWindow() {
